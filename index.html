@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1f2e">
+<title>Of Walking on Foot — Icelandic Field Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#0f1318; --surface:#1a1f2e; --surface2:#232a3b; --border:#2e3750;
+  --accent:#4ade80; --accent2:#60a5fa; --warn:#fb923c;
+  --text:#e2e8f0; --muted:#64748b; --red:#f87171;
+  --radius:12px; --font-mono:'Space Mono',monospace; --font:'Outfit',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;}
+
+/* HEADER */
+#header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+#header h1{font-family:var(--font-mono);font-size:13px;color:var(--accent);letter-spacing:.1em;white-space:nowrap;}
+#header-btns{display:flex;gap:6px;align-items:center;}
+.icon-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 9px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:12px;}
+.icon-btn:active{background:var(--surface2);}
+#gps-status{font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:right;line-height:1.4;min-width:80px;cursor:pointer;}
+#gps-status.got{color:var(--accent);}#gps-status.err{color:var(--red);}
+#datetime-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 14px;font-family:var(--font-mono);font-size:11px;color:var(--accent2);display:flex;justify-content:space-between;}
+
+/* WEATHER STRIP */
+#weather-strip{background:linear-gradient(135deg,#1e2d3d,#1a2535);border-bottom:1px solid var(--border);padding:9px 14px;display:flex;align-items:center;gap:10px;min-height:46px;}
+#weather-icon{font-size:20px;}
+#weather-text{color:var(--text);font-weight:500;font-size:13px;}
+#weather-sub{color:var(--muted);font-size:10px;}
+#weather-verify{margin-left:auto;background:none;border:1px solid var(--border);color:var(--accent2);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;font-family:var(--font);}
+
+/* SYNC BAR */
+#sync-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:6px 14px;font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;}
+#sync-status{display:flex;align-items:center;gap:6px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sync-dot.ok{background:var(--accent);}.sync-dot.err{background:var(--red);}.sync-dot.loading{background:var(--warn);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#sync-cfg-btn{background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;font-family:var(--font);text-decoration:underline;}
+
+/* MAIN GRID */
+#main{padding:10px 10px 110px;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+#card-note{grid-column:1/-1;}
+/* wind+weather span together — handled by placing them adjacently, they naturally pair */
+
+/* SECTION CARDS */
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:opacity .2s;}
+.section-card.hidden-card{display:none;}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;user-select:none;gap:6px;}
+.section-header:active{background:var(--surface2);}
+.section-label{display:flex;align-items:center;gap:7px;flex:1;min-width:0;}
+.section-icon{font-size:15px;flex-shrink:0;}
+.section-name{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);white-space:nowrap;}
+.section-value{font-family:var(--font-mono);font-size:11px;color:var(--accent);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:2px 7px;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.section-value.empty{color:var(--muted);background:transparent;border-color:var(--border);}
+.chevron{color:var(--muted);font-size:11px;transition:transform .2s;flex-shrink:0;}
+.section-card.open .chevron{transform:rotate(180deg);}
+.section-body{display:none;padding:4px 13px 13px;border-top:1px solid var(--border);}
+.section-card.open .section-body{display:block;}
+
+/* WEATHER DETAIL PANEL inside card */
+.wx-panel{background:var(--surface2);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.8;}
+.wx-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:3px 0;}
+.wx-row:last-child{border-bottom:none;}
+.wx-label{color:var(--muted);}
+.wx-val{color:var(--text);font-family:var(--font-mono);font-size:11px;}
+.wx-loading{color:var(--muted);font-size:11px;font-style:italic;margin-top:8px;}
+
+/* RANGE */
+.range-row{display:flex;gap:7px;margin-top:9px;}
+.range-btn{flex:1;padding:13px 4px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;font-family:var(--font-mono);text-align:center;}
+.range-btn:active,.range-btn.selected{border-color:var(--accent);background:rgba(74,222,128,.15);color:var(--accent);}
+
+/* YES/NO */
+.yn-row{display:flex;gap:9px;margin-top:9px;}
+.yn-btn{flex:1;padding:13px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;letter-spacing:.05em;}
+.yn-btn.yes.selected{border-color:var(--accent);background:rgba(74,222,128,.15);color:var(--accent);}
+.yn-btn.no.selected{border-color:var(--red);background:rgba(248,113,113,.15);color:var(--red);}
+
+/* OPTIONS */
+.binary-row{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+.opt-btn{padding:11px 14px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;}
+.opt-btn:active,.opt-btn.selected{border-color:var(--accent2);background:rgba(96,165,250,.15);color:var(--accent2);}
+
+/* CASCADE */
+.cascade-options{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+.cascade-btn{padding:9px 13px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;}
+.cascade-btn:active,.cascade-btn.selected{border-color:var(--warn);background:rgba(251,146,60,.15);color:var(--warn);}
+
+/* ADD NEW */
+.add-new-row{display:flex;gap:7px;margin-top:9px;align-items:center;}
+.add-new-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:13px;padding:8px 11px;outline:none;}
+.add-new-input:focus{border-color:var(--accent2);}
+.add-new-btn{background:var(--accent2);color:#0f1318;border:none;border-radius:8px;font-size:18px;width:36px;height:36px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.text-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:10px 12px;outline:none;margin-top:9px;resize:none;min-height:75px;}
+.text-input:focus{border-color:var(--accent2);}
+.hint{font-size:11px;color:var(--muted);margin-top:7px;font-style:italic;}
+
+/* FOOTER */
+#footer{position:fixed;bottom:0;left:0;right:0;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);display:flex;gap:8px;z-index:100;align-items:center;}
+#btn-save{flex:1;padding:15px;background:var(--accent);color:#0f1318;border:none;border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;}
+#btn-save:active{opacity:.85;transform:scale(.98);}
+#btn-add-field{width:46px;height:46px;border-radius:50%;border:none;color:#0f1318;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s;}
+#btn-add-field:active{transform:scale(.9);}
+#btn-hide-show{width:46px;height:46px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+#btn-hide-show:active{background:var(--surface);transform:scale(.9);}
+#btn-quit{padding:15px 16px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;}
+
+/* TOAST */
+#toast{position:fixed;top:68px;left:50%;transform:translateX(-50%) translateY(-10px);background:var(--accent);color:#0f1318;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;overflow-y:auto;padding:16px 10px 40px;}
+.modal-overlay.open{display:block;}
+.modal-box{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--border);}
+.modal-header h2{font-family:var(--font-mono);font-size:12px;color:var(--accent);letter-spacing:.1em;}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+
+/* HISTORY */
+.history-entry{border-bottom:1px solid var(--border);padding:11px 14px;font-size:11px;font-family:var(--font-mono);}
+.history-entry:last-child{border-bottom:none;}
+.history-ts{color:var(--accent2);margin-bottom:5px;}
+.history-gps{color:var(--muted);margin-bottom:6px;}
+.history-data{color:var(--text);line-height:1.7;}
+.synced-badge{background:rgba(74,222,128,.15);color:var(--accent);border:1px solid rgba(74,222,128,.3);border-radius:4px;padding:1px 5px;font-size:9px;margin-left:6px;}
+
+/* SETTINGS */
+.settings-section{padding:14px 15px;border-bottom:1px solid var(--border);}
+.settings-section:last-child{border-bottom:none;}
+.settings-section h3{font-size:12px;font-weight:600;color:var(--accent2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.settings-label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
+.settings-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:9px 11px;outline:none;}
+.settings-input:focus{border-color:var(--accent2);}
+.settings-btn{margin-top:9px;padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;}
+.btn-primary{background:var(--accent2);color:#0f1318;}
+.btn-success{background:rgba(74,222,128,.2);color:var(--accent);border:1px solid rgba(74,222,128,.3);}
+.btn-danger{background:rgba(248,113,113,.2);color:var(--red);border:1px solid rgba(248,113,113,.3);}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;}
+.settings-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;}
+.settings-note a{color:var(--accent2);}
+.code-block{font-size:10px;color:#a78bfa;display:block;margin-top:6px;padding:9px 10px;background:#0f1318;border-radius:6px;line-height:1.6;word-break:break-all;white-space:pre-wrap;font-family:var(--font-mono);}
+
+/* HIDE/SHOW MODAL */
+.vis-row{display:flex;align-items:center;justify-content:space-between;padding:9px 15px;border-bottom:1px solid var(--border);font-size:13px;}
+.vis-row:last-child{border-bottom:none;}
+.vis-name{color:var(--text);}
+.vis-toggle{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:4px 12px;font-size:11px;cursor:pointer;font-family:var(--font);}
+.vis-toggle.shown{border-color:var(--accent);color:var(--accent);background:rgba(74,222,128,.1);}
+.vis-toggle.hidden{border-color:var(--red);color:var(--red);background:rgba(248,113,113,.1);}
+
+/* CUSTOM CARDS */
+.custom-card{border-color:var(--card-color,#a78bfa)!important;}
+.custom-card .section-name{color:var(--card-color,#a78bfa)!important;}
+.card-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🧊 Of Walking on Foot</h1>
+  <div id="header-btns">
+    <button class="icon-btn" onclick="openSettings()">⚙️</button>
+    <button class="icon-btn" onclick="openHistory()">📋 Log</button>
+    <div id="gps-status" onclick="requestGPS()" title="Tap to re-acquire GPS">Acquiring…</div>
+  </div>
+</div>
+
+<div id="datetime-bar">
+  <span id="dt-date">—</span>
+  <span id="dt-time">—</span>
+</div>
+
+<div id="weather-strip">
+  <span id="weather-icon">⏳</span>
+  <div>
+    <div id="weather-text">Fetching weather…</div>
+    <div id="weather-sub">waiting for GPS</div>
+  </div>
+  <button id="weather-verify" onclick="fetchWeather()">↻ Refresh</button>
+</div>
+
+<div id="sync-bar">
+  <div id="sync-status">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-label">Google Sheets: not configured</span>
+  </div>
+  <button id="sync-cfg-btn" onclick="openSettings()">Configure →</button>
+</div>
+
+<div id="main">
+
+  <!-- SLEEP QUALITY — first -->
+  <div class="section-card" id="card-sleep" data-label="Sleep Quality">
+    <div class="section-header" onclick="toggleCard('sleep')">
+      <div class="section-label"><span class="section-icon">🌙</span><span class="section-name">Sleep Quality</span></div>
+      <span class="section-value empty" id="val-sleep">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body"><div class="range-row" id="range-sleep"></div></div>
+  </div>
+
+  <div class="section-card" id="card-tiredness" data-label="Tiredness">
+    <div class="section-header" onclick="toggleCard('tiredness')">
+      <div class="section-label"><span class="section-icon">😴</span><span class="section-name">Tiredness</span></div>
+      <span class="section-value empty" id="val-tiredness">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body"><div class="range-row" id="range-tiredness"></div></div>
+  </div>
+
+  <div class="section-card" id="card-cold" data-label="Cold">
+    <div class="section-header" onclick="toggleCard('cold')">
+      <div class="section-label"><span class="section-icon">🥶</span><span class="section-name">Cold</span></div>
+      <span class="section-value empty" id="val-cold">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body"><div class="range-row" id="range-cold"></div></div>
+  </div>
+
+  <div class="section-card" id="card-hunger" data-label="Hunger">
+    <div class="section-header" onclick="toggleCard('hunger')">
+      <div class="section-label"><span class="section-icon">🍞</span><span class="section-name">Hunger</span></div>
+      <span class="section-value empty" id="val-hunger">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="yn-row">
+        <button class="yn-btn yes" onclick="setYN('hunger','Yes')">YES</button>
+        <button class="yn-btn no" onclick="setYN('hunger','No')">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-thirst" data-label="Thirst">
+    <div class="section-header" onclick="toggleCard('thirst')">
+      <div class="section-label"><span class="section-icon">💧</span><span class="section-name">Thirst</span></div>
+      <span class="section-value empty" id="val-thirst">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="yn-row">
+        <button class="yn-btn yes" onclick="setYN('thirst','Yes')">YES</button>
+        <button class="yn-btn no" onclick="setYN('thirst','No')">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-skin" data-label="Skin">
+    <div class="section-header" onclick="toggleCard('skin')">
+      <div class="section-label"><span class="section-icon">🌡️</span><span class="section-name">Skin</span></div>
+      <span class="section-value empty" id="val-skin">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="binary-row" id="opts-skin">
+        <button class="opt-btn" onclick="setOpt('skin','Cold',this)">❄️ Cold</button>
+        <button class="opt-btn" onclick="setOpt('skin','Sweat',this)">💦 Sweat</button>
+        <button class="opt-btn" onclick="setOpt('skin','Dry',this)">🌵 Dry</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-skin" placeholder="Add option…"/>
+        <button class="add-new-btn" onclick="addOpt('skin')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-trance" data-label="Trance">
+    <div class="section-header" onclick="toggleCard('trance')">
+      <div class="section-label"><span class="section-icon">🌀</span><span class="section-name">Trance</span></div>
+      <span class="section-value empty" id="val-trance">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="yn-row">
+        <button class="yn-btn yes" onclick="setYN('trance','Yes')">YES</button>
+        <button class="yn-btn no" onclick="setYN('trance','No')">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-pain" data-label="Pain">
+    <div class="section-header" onclick="toggleCard('pain')">
+      <div class="section-label"><span class="section-icon">⚡</span><span class="section-name">Pain</span></div>
+      <span class="section-value empty" id="val-pain">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="cascade-options" id="opts-pain">
+        <button class="cascade-btn" onclick="toggleCascade('pain','Back',this)">Back</button>
+        <button class="cascade-btn" onclick="toggleCascade('pain','Knees',this)">Knees</button>
+        <button class="cascade-btn" onclick="toggleCascade('pain','Feet',this)">Feet</button>
+        <button class="cascade-btn" onclick="toggleCascade('pain','Shoulders',this)">Shoulders</button>
+        <button class="cascade-btn" onclick="toggleCascade('pain','Head',this)">Head</button>
+        <button class="cascade-btn" onclick="toggleCascade('pain','Hips',this)">Hips</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-pain" placeholder="Add location…"/>
+        <button class="add-new-btn" onclick="addCascade('pain')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-solitude" data-label="Solitude">
+    <div class="section-header" onclick="toggleCard('solitude')">
+      <div class="section-label"><span class="section-icon">🚶</span><span class="section-name">Solitude</span></div>
+      <span class="section-value empty" id="val-solitude">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body"><div class="range-row" id="range-solitude"></div></div>
+  </div>
+
+  <div class="section-card" id="card-trolley" data-label="Trolley Weight">
+    <div class="section-header" onclick="toggleCard('trolley')">
+      <div class="section-label"><span class="section-icon">🧳</span><span class="section-name">Trolley Weight</span></div>
+      <span class="section-value empty" id="val-trolley">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body"><div class="range-row" id="range-trolley"></div></div>
+  </div>
+
+  <div class="section-card" id="card-pace" data-label="Pace">
+    <div class="section-header" onclick="toggleCard('pace')">
+      <div class="section-label"><span class="section-icon">👟</span><span class="section-name">Pace</span></div>
+      <span class="section-value empty" id="val-pace">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="binary-row">
+        <button class="opt-btn" onclick="setOpt('pace','Low',this)">🐢 Low</button>
+        <button class="opt-btn" onclick="setOpt('pace','Medium',this)">🚶 Medium</button>
+        <button class="opt-btn" onclick="setOpt('pace','High',this)">🏃 High</button>
+        <button class="opt-btn" onclick="setOpt('pace','Suffering',this)">😵 Suffering</button>
+        <button class="opt-btn" onclick="setOpt('pace','Hype',this)">⚡ Hype</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIND — shows open-meteo wind data when expanded -->
+  <div class="section-card" id="card-wind" data-label="Wind">
+    <div class="section-header" onclick="toggleCardWithWx('wind')">
+      <div class="section-label"><span class="section-icon">💨</span><span class="section-name">Wind</span></div>
+      <span class="section-value empty" id="val-wind">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div id="wx-wind-panel" class="wx-panel" style="display:none">
+        <div class="wx-loading" id="wx-wind-loading">Loading live data…</div>
+        <div id="wx-wind-data" style="display:none">
+          <div class="wx-row"><span class="wx-label">Wind speed</span><span class="wx-val" id="wx-wind-speed">—</span></div>
+          <div class="wx-row"><span class="wx-label">Wind gusts</span><span class="wx-val" id="wx-wind-gusts">—</span></div>
+          <div class="wx-row"><span class="wx-label">Direction</span><span class="wx-val" id="wx-wind-dir">—</span></div>
+        </div>
+      </div>
+      <div class="range-row" id="range-wind"></div>
+      <p class="hint">1 = calm · 5 = very strong</p>
+    </div>
+  </div>
+
+  <!-- WEATHER — shows open-meteo full data when expanded -->
+  <div class="section-card" id="card-weather" data-label="Weather">
+    <div class="section-header" onclick="toggleCardWithWx('weather')">
+      <div class="section-label"><span class="section-icon">🌤️</span><span class="section-name">Weather</span></div>
+      <span class="section-value empty" id="val-weather">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div id="wx-weather-panel" class="wx-panel" style="display:none">
+        <div class="wx-loading" id="wx-weather-loading">Loading live data…</div>
+        <div id="wx-weather-data" style="display:none">
+          <div class="wx-row"><span class="wx-label">Condition</span><span class="wx-val" id="wx-cond">—</span></div>
+          <div class="wx-row"><span class="wx-label">Temperature</span><span class="wx-val" id="wx-temp">—</span></div>
+          <div class="wx-row"><span class="wx-label">Feels like</span><span class="wx-val" id="wx-feels">—</span></div>
+          <div class="wx-row"><span class="wx-label">Humidity</span><span class="wx-val" id="wx-humidity">—</span></div>
+          <div class="wx-row"><span class="wx-label">Precipitation</span><span class="wx-val" id="wx-precip">—</span></div>
+          <div class="wx-row"><span class="wx-label">Cloud cover</span><span class="wx-val" id="wx-cloud">—</span></div>
+          <div class="wx-row"><span class="wx-label">Visibility</span><span class="wx-val" id="wx-vis">—</span></div>
+          <div class="wx-row"><span class="wx-label">UV index</span><span class="wx-val" id="wx-uv">—</span></div>
+          <div class="wx-row"><span class="wx-label">Pressure</span><span class="wx-val" id="wx-pressure">—</span></div>
+        </div>
+      </div>
+      <div class="cascade-options" id="opts-weather">
+        <button class="cascade-btn" onclick="toggleCascade('weather','Sun',this)">☀️ Sun</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Partly Cloudy',this)">⛅ Partly</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Cloud',this)">☁️ Cloud</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Rain',this)">🌧️ Rain</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Storm',this)">⛈️ Storm</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Fog',this)">🌫️ Fog</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Snow',this)">❄️ Snow</button>
+        <button class="cascade-btn" onclick="toggleCascade('weather','Windy',this)">🌬️ Windy</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-weather" placeholder="Add condition…"/>
+        <button class="add-new-btn" onclick="addCascade('weather')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-terrain" data-label="Terrain">
+    <div class="section-header" onclick="toggleCard('terrain')">
+      <div class="section-label"><span class="section-icon">🗺️</span><span class="section-name">Terrain</span></div>
+      <span class="section-value empty" id="val-terrain">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="cascade-options" id="opts-terrain">
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Asphalt',this)">Asphalt</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Gravel',this)">Gravel</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Dirt',this)">Dirt</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Sand',this)">Sand</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Mud',this)">Mud</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Rock',this)">Rock</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Grass',this)">Grass</button>
+        <button class="cascade-btn" onclick="toggleCascade('terrain','Forest',this)">Forest</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-terrain" placeholder="Add terrain type…"/>
+        <button class="add-new-btn" onclick="addCascade('terrain')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-humans" data-label="Humans">
+    <div class="section-header" onclick="toggleCard('humans')">
+      <div class="section-label"><span class="section-icon">👥</span><span class="section-name">Humans</span></div>
+      <span class="section-value empty" id="val-humans">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="yn-row">
+        <button class="yn-btn yes" onclick="setYN('humans','Yes')">YES</button>
+        <button class="yn-btn no" onclick="setYN('humans','No')">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-animals" data-label="Animals">
+    <div class="section-header" onclick="toggleCard('animals')">
+      <div class="section-label"><span class="section-icon">🐾</span><span class="section-name">Animals</span></div>
+      <span class="section-value empty" id="val-animals">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="cascade-options" id="opts-animals">
+        <button class="cascade-btn" onclick="toggleCascade('animals','Dog',this)">🐕 Dog</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Cat',this)">🐈 Cat</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Horse',this)">🐴 Horse</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Cow',this)">🐄 Cow</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Bird',this)">🐦 Bird</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Fox',this)">🦊 Fox</button>
+        <button class="cascade-btn" onclick="toggleCascade('animals','Deer',this)">🦌 Deer</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-animals" placeholder="Add animal…"/>
+        <button class="add-new-btn" onclick="addCascade('animals')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-mental" data-label="Mental Loop">
+    <div class="section-header" onclick="toggleCard('mental')">
+      <div class="section-label"><span class="section-icon">🔁</span><span class="section-name">Mental Loop</span></div>
+      <span class="section-value empty" id="val-mental">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="yn-row">
+        <button class="yn-btn yes" onclick="setYN('mental','Yes')">YES</button>
+        <button class="yn-btn no" onclick="setYN('mental','No')">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-camping" data-label="Camping Plot">
+    <div class="section-header" onclick="toggleCard('camping')">
+      <div class="section-label"><span class="section-icon">⛺</span><span class="section-name">Camping Plot</span></div>
+      <span class="section-value empty" id="val-camping">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="cascade-options" id="opts-camping">
+        <button class="cascade-btn" onclick="toggleCascade('camping','Meadow',this)">🌿 Meadow</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Forest Edge',this)">🌲 Forest Edge</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Rocky',this)">🪨 Rocky</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Riverbank',this)">🏞️ Riverbank</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Campsite',this)">🏕️ Campsite</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Urban',this)">🏙️ Urban</button>
+        <button class="cascade-btn" onclick="toggleCascade('camping','Shelter',this)">🏠 Shelter</button>
+      </div>
+      <div class="add-new-row">
+        <input class="add-new-input" id="new-camping" placeholder="Add plot type…"/>
+        <button class="add-new-btn" onclick="addCascade('camping')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" id="card-note" data-label="Note">
+    <div class="section-header" onclick="toggleCard('note')">
+      <div class="section-label"><span class="section-icon">📝</span><span class="section-name">Note</span></div>
+      <span class="section-value empty" id="val-note">—</span><span class="chevron">▾</span>
+    </div>
+    <div class="section-body">
+      <textarea class="text-input" id="input-note" placeholder="Free text note…" rows="4" oninput="setNote()"></textarea>
+    </div>
+  </div>
+
+</div><!-- #main -->
+
+<div id="footer">
+  <button id="btn-save" onclick="saveEntry()">💾 Save Entry</button>
+  <button id="btn-add-field" onclick="openAddField()" title="Add custom field">+</button>
+  <button id="btn-hide-show" onclick="openHideShow()" title="Show / hide fields">👁</button>
+  <button id="btn-quit" onclick="quitApp()">✕ Quit</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>📋 ENTRY LOG</h2>
+      <button class="modal-close" onclick="closeModal('history-modal')">✕</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- HIDE/SHOW MODAL -->
+<div class="modal-overlay" id="hideshow-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>👁 SHOW / HIDE FIELDS</h2>
+      <button class="modal-close" onclick="closeModal('hideshow-modal')">✕</button>
+    </div>
+    <div id="hideshow-list"></div>
+  </div>
+</div>
+
+<!-- ADD FIELD MODAL -->
+<div class="modal-overlay" id="addfield-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>✦ CUSTOM FIELD</h2>
+      <button class="modal-close" onclick="closeModal('addfield-modal')">✕</button>
+    </div>
+    <div class="settings-section">
+      <label class="settings-label">Field name (shown in CAPS)</label>
+      <input class="settings-input" id="cf-name" placeholder="e.g. Energy"/>
+      <label class="settings-label" style="margin-top:12px">Input type</label>
+      <div class="binary-row" style="margin-top:6px">
+        <button class="opt-btn" id="cf-type-scale" onclick="setCfType('scale',this)">📊 1–5 Scale</button>
+        <button class="opt-btn" id="cf-type-text" onclick="setCfType('text',this)">💬 Text Options</button>
+      </div>
+      <div id="cf-text-opts" style="display:none;margin-top:10px">
+        <label class="settings-label">Options (one per line)</label>
+        <textarea class="text-input" id="cf-options" placeholder="Option A&#10;Option B&#10;Option C" rows="4" style="margin-top:4px"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="settings-btn btn-primary" onclick="addCustomField()">✦ Add Field</button>
+      </div>
+    </div>
+    <div class="settings-section" id="cf-existing-section">
+      <h3>Existing Custom Fields</h3>
+      <div id="cf-existing-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>⚙️ SETTINGS</h2>
+      <button class="modal-close" onclick="closeModal('settings-modal')">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>📊 Google Sheets Sync</h3>
+      <label class="settings-label">Apps Script Web App URL</label>
+      <input class="settings-input" id="sheets-url" placeholder="https://script.google.com/macros/s/…/exec"/>
+      <div class="btn-row">
+        <button class="settings-btn btn-primary" onclick="saveSheetsCfg()">💾 Save URL</button>
+        <button class="settings-btn btn-success" onclick="testSheetsConnection()">🔌 Test</button>
+      </div>
+      <div class="settings-note">
+        <strong style="color:#e2e8f0">One-time setup:</strong><br>
+        1. <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → New spreadsheet<br>
+        2. Extensions → Apps Script → paste the script from the Security section below<br>
+        3. Deploy → New Deployment → Web App · Execute as: <b>Me</b> · Access: <b>Anyone</b><br>
+        4. Copy URL → paste above
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🔐 Security Token</h3>
+      <label class="settings-label">Secret token (sent with every save)</label>
+      <input class="settings-input" id="sheets-token" placeholder="e.g. mysecretword123" type="password"/>
+      <div class="btn-row">
+        <button class="settings-btn btn-primary" onclick="saveTokenCfg()">💾 Save Token</button>
+      </div>
+      <div class="settings-note">
+        Set a secret word here and in your Apps Script to block unauthorized writes.<br><br>
+        <strong style="color:#e2e8f0">Apps Script to use:</strong>
+        <code class="code-block">var SECRET = 'your_token_here';
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  if (data._token !== SECRET) return ContentService.createTextOutput('denied');
+  delete data._token;
+  if (sheet.getLastRow() === 0) sheet.appendRow(Object.keys(data));
+  sheet.appendRow(Object.values(data));
+  return ContentService.createTextOutput('ok');
+}</code>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>📥 Export All Local Data</h3>
+      <div class="btn-row">
+        <button class="settings-btn btn-primary" onclick="exportExcel()">📊 .xlsx</button>
+        <button class="settings-btn btn-primary" onclick="exportCSV()">📋 .csv</button>
+        <button class="settings-btn btn-primary" onclick="exportJSON()">📄 .json</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🗑️ Danger Zone</h3>
+      <button class="settings-btn btn-danger" onclick="clearHistory()">Delete All Local Entries</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let gps=null, weatherData=null, wxDetail=null;
+let gpsWatchId=null, gpsRetryTimer=null;
+let sheetsUrl='', sheetsToken='';
+let customFields=[];
+let cfType='scale';
+let hiddenCards=new Set();
+const values={};
+
+const PALETTE=['#a78bfa','#34d399','#f472b6','#fb923c','#38bdf8','#fbbf24','#e879f9','#4ade80','#f87171','#60a5fa'];
+
+// ── INIT ───────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  updateClock(); setInterval(updateClock,1000);
+  buildRanges(); requestGPS(); loadSheetsCfg(); loadCustomFields(); loadHiddenCards();
+});
+
+function updateClock(){
+  const n=new Date();
+  document.getElementById('dt-date').textContent=n.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('dt-time').textContent=n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function buildRanges(){
+  ['tiredness','cold','solitude','trolley','wind','sleep'].forEach(f=>{
+    const el=document.getElementById('range-'+f); if(!el) return;
+    for(let i=1;i<=5;i++){const b=document.createElement('button');b.className='range-btn';b.textContent=i;b.onclick=()=>setRange(f,i,b);el.appendChild(b);}
+  });
+}
+
+// ── GPS ────────────────────────────────────────────────
+function requestGPS(){
+  if(!navigator.geolocation){setGPSStatus('Not supported','err');return;}
+  if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null;}
+  if(gpsRetryTimer){clearTimeout(gpsRetryTimer);gpsRetryTimer=null;}
+  setGPSStatus('📡 Acquiring…','');
+  navigator.geolocation.getCurrentPosition(
+    p=>onGPSSuccess(p,true),
+    e=>onGPSError(e),
+    {enableHighAccuracy:false,timeout:8000,maximumAge:30000}
+  );
+  gpsWatchId=navigator.geolocation.watchPosition(
+    p=>onGPSSuccess(p,false),
+    ()=>{},
+    {enableHighAccuracy:true,timeout:30000,maximumAge:0}
+  );
+}
+function onGPSSuccess(p,triggerWeather){
+  const first=!gps;
+  gps={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
+  setGPSStatus(`${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)}\n±${Math.round(gps.acc)}m`,'got');
+  if(first||triggerWeather) fetchWeather();
+}
+function onGPSError(e){
+  let msg='GPS failed';
+  if(e.code===1) msg='⚠️ Permission denied\nTap to retry';
+  else if(e.code===2) msg='⚠️ Unavailable\nTap to retry';
+  else if(e.code===3) msg='⚠️ Timeout\nTap to retry';
+  setGPSStatus(msg,'err');
+  gpsRetryTimer=setTimeout(requestGPS,10000);
+}
+function setGPSStatus(t,c){const el=document.getElementById('gps-status');el.textContent=t;el.className=c;}
+
+// ── WEATHER (strip + detail) ───────────────────────────
+async function fetchWeather(){
+  if(!gps){document.getElementById('weather-text').textContent='GPS needed';return;}
+  document.getElementById('weather-text').textContent='Fetching…';
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${gps.lat}&longitude=${gps.lon}`
+      +`&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,relative_humidity_2m,cloud_cover,visibility,uv_index,surface_pressure`
+      +`&wind_speed_unit=ms&timezone=auto`;
+    const res=await fetch(url);
+    const d=await res.json(); const c=d.current;
+    const desc=wCode(c.weather_code);
+    weatherData={temp:c.temperature_2m,feels:c.apparent_temperature,wind:c.wind_speed_10m,precip:c.precipitation,desc:desc.t,icon:desc.i,code:c.weather_code};
+    wxDetail={
+      speed:c.wind_speed_10m, gusts:c.wind_gusts_10m, dir:windDir(c.wind_direction_10m),
+      temp:c.temperature_2m, feels:c.apparent_temperature, humidity:c.relative_humidity_2m,
+      precip:c.precipitation, cloud:c.cloud_cover, vis:c.visibility, uv:c.uv_index,
+      pressure:c.surface_pressure, cond:desc.t, icon:desc.i
+    };
+    // Update strip
+    document.getElementById('weather-icon').textContent=weatherData.icon;
+    document.getElementById('weather-text').textContent=`${weatherData.desc}  ${weatherData.temp}°C (feels ${weatherData.feels}°C)`;
+    document.getElementById('weather-sub').textContent=`Wind ${weatherData.wind} m/s · Precip ${weatherData.precip} mm`;
+    // Fill detail panels
+    fillWxPanels();
+    autoWeather(c.weather_code);
+  }catch(e){
+    document.getElementById('weather-icon').textContent='⚠️';
+    document.getElementById('weather-text').textContent='Weather unavailable';
+  }
+}
+
+function fillWxPanels(){
+  if(!wxDetail) return;
+  // Wind panel
+  document.getElementById('wx-wind-loading').style.display='none';
+  document.getElementById('wx-wind-data').style.display='block';
+  document.getElementById('wx-wind-speed').textContent=`${wxDetail.speed} m/s`;
+  document.getElementById('wx-wind-gusts').textContent=`${wxDetail.gusts} m/s`;
+  document.getElementById('wx-wind-dir').textContent=wxDetail.dir;
+  // Weather panel
+  document.getElementById('wx-weather-loading').style.display='none';
+  document.getElementById('wx-weather-data').style.display='block';
+  document.getElementById('wx-cond').textContent=`${wxDetail.icon} ${wxDetail.cond}`;
+  document.getElementById('wx-temp').textContent=`${wxDetail.temp}°C`;
+  document.getElementById('wx-feels').textContent=`${wxDetail.feels}°C`;
+  document.getElementById('wx-humidity').textContent=`${wxDetail.humidity}%`;
+  document.getElementById('wx-precip').textContent=`${wxDetail.precip} mm`;
+  document.getElementById('wx-cloud').textContent=`${wxDetail.cloud}%`;
+  document.getElementById('wx-vis').textContent=wxDetail.vis!=null?`${(wxDetail.vis/1000).toFixed(1)} km`:'—';
+  document.getElementById('wx-uv').textContent=wxDetail.uv!=null?wxDetail.uv:'—';
+  document.getElementById('wx-pressure').textContent=wxDetail.pressure!=null?`${Math.round(wxDetail.pressure)} hPa`:'—';
+}
+
+function toggleCardWithWx(field){
+  const card=document.getElementById('card-'+field);
+  const panel=document.getElementById('wx-'+field+'-panel');
+  const wasOpen=card.classList.contains('open');
+  card.classList.toggle('open');
+  if(!wasOpen && panel){
+    panel.style.display='block';
+    if(wxDetail) fillWxPanels();
+    else if(gps) fetchWeather();
+    else{
+      document.getElementById('wx-'+field+'-loading').textContent='Waiting for GPS…';
+    }
+  }
+}
+
+function windDir(deg){
+  if(deg==null) return '—';
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg/45)%8]+` (${deg}°)`;
+}
+
+function autoWeather(code){
+  const m={0:'Sun',1:'Partly Cloudy',2:'Partly Cloudy',3:'Cloud',45:'Fog',48:'Fog',51:'Rain',61:'Rain',63:'Rain',65:'Rain',71:'Snow',73:'Snow',75:'Snow',80:'Rain',81:'Rain',82:'Storm',95:'Storm',99:'Storm'};
+  const s=m[code]||null;
+  if(s&&(!values['weather']||!values['weather'].length)){
+    values['weather']=[s]; updateVal('weather');
+    document.querySelectorAll('#opts-weather .cascade-btn').forEach(b=>{if(b.textContent.includes(s)) b.classList.add('selected');});
+  }
+}
+function wCode(c){const m={0:{i:'☀️',t:'Clear'},1:{i:'🌤️',t:'Mainly Clear'},2:{i:'⛅',t:'Partly Cloudy'},3:{i:'☁️',t:'Overcast'},45:{i:'🌫️',t:'Fog'},48:{i:'🌫️',t:'Icy Fog'},51:{i:'🌦️',t:'Drizzle'},61:{i:'🌧️',t:'Rain'},63:{i:'🌧️',t:'Rain'},65:{i:'🌧️',t:'Heavy Rain'},71:{i:'❄️',t:'Snow'},73:{i:'❄️',t:'Snow'},75:{i:'❄️',t:'Heavy Snow'},80:{i:'🌦️',t:'Showers'},81:{i:'🌧️',t:'Heavy Showers'},82:{i:'⛈️',t:'Violent Showers'},95:{i:'⛈️',t:'Thunderstorm'},99:{i:'⛈️',t:'T-Storm+Hail'}};return m[c]||{i:'🌡️',t:'Code '+c};}
+
+// ── UI CONTROLS ────────────────────────────────────────
+function toggleCard(id){document.getElementById('card-'+id).classList.toggle('open');}
+function setRange(f,v,b){values[f]=v;b.closest('.range-row').querySelectorAll('.range-btn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');updateVal(f);}
+function setYN(f,v){values[f]=v;document.getElementById('card-'+f).querySelectorAll('.yn-btn').forEach(b=>b.classList.toggle('selected',b.textContent===v.toUpperCase()));updateVal(f);}
+function setOpt(f,v,b){values[f]=v;b.closest('.binary-row').querySelectorAll('.opt-btn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');updateVal(f);}
+function toggleCascade(f,v,b){if(!values[f])values[f]=[];const i=values[f].indexOf(v);if(i>=0){values[f].splice(i,1);b.classList.remove('selected');}else{values[f].push(v);b.classList.add('selected');}updateVal(f);}
+function addOpt(f){const inp=document.getElementById('new-'+f),v=inp.value.trim();if(!v)return;const b=document.createElement('button');b.className='opt-btn';b.textContent=v;b.onclick=()=>setOpt(f,v,b);document.getElementById('opts-'+f).appendChild(b);inp.value='';}
+function addCascade(f){const inp=document.getElementById('new-'+f),v=inp.value.trim();if(!v)return;const b=document.createElement('button');b.className='cascade-btn';b.textContent=v;b.onclick=()=>toggleCascade(f,v,b);document.getElementById('opts-'+f).appendChild(b);inp.value='';}
+function setNote(){const v=document.getElementById('input-note').value.trim();values['note']=v||null;const el=document.getElementById('val-note');if(v){el.textContent=v.substring(0,20)+(v.length>20?'…':'');el.classList.remove('empty');}else{el.textContent='—';el.classList.add('empty');}}
+function updateVal(f){const el=document.getElementById('val-'+f);if(!el)return;const v=values[f];if(v===null||v===undefined||(Array.isArray(v)&&!v.length)){el.textContent='—';el.classList.add('empty');return;}const d=Array.isArray(v)?v.join(', '):String(v);el.textContent=d.length>18?d.substring(0,18)+'…':d;el.classList.remove('empty');}
+
+// ── HIDE / SHOW ────────────────────────────────────────
+function loadHiddenCards(){
+  try{const h=JSON.parse(localStorage.getItem('fj_hidden')||'[]');hiddenCards=new Set(h);}catch(e){hiddenCards=new Set();}
+  hiddenCards.forEach(id=>{
+    const card=document.getElementById('card-'+id);
+    if(card) card.classList.add('hidden-card');
+  });
+}
+
+function saveHiddenCards(){
+  try{localStorage.setItem('fj_hidden',JSON.stringify([...hiddenCards]));}catch(e){}
+}
+
+function openHideShow(){
+  const list=document.getElementById('hideshow-list');
+  // Collect all cards
+  const cards=Array.from(document.querySelectorAll('#main .section-card'));
+  list.innerHTML=cards.map(card=>{
+    const id=card.id.replace('card-','');
+    const label=card.dataset.label||id;
+    const isHidden=hiddenCards.has(id);
+    return `<div class="vis-row">
+      <span class="vis-name">${label}</span>
+      <button class="vis-toggle ${isHidden?'hidden':'shown'}" onclick="toggleCardVisibility('${id}',this)">
+        ${isHidden?'👁 Show':'🙈 Hide'}
+      </button>
+    </div>`;
+  }).join('');
+  openModal('hideshow-modal');
+}
+
+function toggleCardVisibility(id,btn){
+  const card=document.getElementById('card-'+id);
+  if(hiddenCards.has(id)){
+    hiddenCards.delete(id);
+    card.classList.remove('hidden-card');
+    btn.className='vis-toggle shown';
+    btn.textContent='🙈 Hide';
+  } else {
+    hiddenCards.add(id);
+    card.classList.add('hidden-card');
+    btn.className='vis-toggle hidden';
+    btn.textContent='👁 Show';
+  }
+  saveHiddenCards();
+}
+
+// ── GOOGLE SHEETS ──────────────────────────────────────
+function loadSheetsCfg(){
+  try{sheetsUrl=localStorage.getItem('fj_sheets_url')||'';sheetsToken=localStorage.getItem('fj_sheets_token')||'';}catch(e){}
+  updateSyncUi(sheetsUrl?'ready':'unconfigured');
+  if(document.getElementById('sheets-url')) document.getElementById('sheets-url').value=sheetsUrl;
+  if(document.getElementById('sheets-token')) document.getElementById('sheets-token').value=sheetsToken;
+}
+function saveSheetsCfg(){const u=document.getElementById('sheets-url').value.trim();sheetsUrl=u;try{localStorage.setItem('fj_sheets_url',u);}catch(e){}updateSyncUi(u?'ready':'unconfigured');showToast(u?'✓ URL saved':'URL cleared',u?'#4ade80':'#fb923c');}
+function saveTokenCfg(){const t=document.getElementById('sheets-token').value.trim();sheetsToken=t;try{localStorage.setItem('fj_sheets_token',t);}catch(e){}showToast(t?'✓ Token saved':'Token cleared',t?'#4ade80':'#fb923c');}
+async function testSheetsConnection(){if(!sheetsUrl){showToast('⚠️ No URL configured','#fb923c');return;}updateSyncUi('syncing');try{await pushToSheets({_test:'ping',timestamp:new Date().toISOString()});updateSyncUi('ok');showToast('✓ Connection works!','#4ade80');}catch(e){updateSyncUi('error');showToast('✗ Connection failed','#f87171');}}
+async function pushToSheets(row){if(!sheetsUrl)return false;const payload={...row};if(sheetsToken)payload._token=sheetsToken;await fetch(sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});return true;}
+function updateSyncUi(s){const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');const map={unconfigured:{c:'',t:'Google Sheets: not configured'},ready:{c:'',t:'Google Sheets: ready'},syncing:{c:'loading',t:'Google Sheets: syncing…'},ok:{c:'ok',t:'Google Sheets: synced ✓'},error:{c:'err',t:'Google Sheets: sync failed ✗'}};const st=map[s]||map.unconfigured;dot.className='sync-dot '+st.c;lbl.textContent=st.t;}
+
+// ── BUILD ROW ──────────────────────────────────────────
+function buildRow(){
+  const n=new Date();
+  const row={
+    Timestamp:n.toISOString(),Date:n.toLocaleDateString('en-GB'),Time:n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    Latitude:gps?gps.lat:'',Longitude:gps?gps.lon:'',GPS_Acc_m:gps?Math.round(gps.acc):'',
+    Weather_Auto:weatherData?`${weatherData.desc} ${weatherData.temp}°C`:'',
+    Temp_C:weatherData?weatherData.temp:'',Feels_C:weatherData?weatherData.feels:'',
+    Wind_ms:weatherData?weatherData.wind:'',Precip_mm:weatherData?weatherData.precip:'',
+    Tiredness:values.tiredness||'',Cold:values.cold||'',Hunger:values.hunger||'',Thirst:values.thirst||'',
+    Skin:values.skin||'',Trance:values.trance||'',
+    Pain:Array.isArray(values.pain)?values.pain.join('; '):(values.pain||''),
+    Solitude:values.solitude||'',Trolley:values.trolley||'',Pace:values.pace||'',Wind_Scale:values.wind||'',
+    Terrain:Array.isArray(values.terrain)?values.terrain.join('; '):(values.terrain||''),
+    Humans:values.humans||'',
+    Animals:Array.isArray(values.animals)?values.animals.join('; '):(values.animals||''),
+    Weather:Array.isArray(values.weather)?values.weather.join('; '):(values.weather||''),
+    Mental_Loop:values.mental||'',Sleep_Quality:values.sleep||'',
+    Camping_Plot:Array.isArray(values.camping)?values.camping.join('; '):(values.camping||''),
+    Note:values.note||''
+  };
+  customFields.forEach(cf=>{const v=values[cf.key];row[cf.name]=Array.isArray(v)?v.join('; '):(v||'');});
+  return row;
+}
+
+// ── SAVE ───────────────────────────────────────────────
+async function saveEntry(){
+  const hasData=Object.values(values).some(v=>v!==null&&v!==undefined&&!(Array.isArray(v)&&!v.length)&&v!=='');
+  if(!hasData){showToast('⚠️ No data to save!','#fb923c');return;}
+  const row=buildRow();
+  let entries=[];try{entries=JSON.parse(localStorage.getItem('fieldjournal')||'[]');}catch(e){}
+  entries.unshift({...row,_synced:false});
+  try{localStorage.setItem('fieldjournal',JSON.stringify(entries));}catch(e){}
+  if(sheetsUrl){
+    updateSyncUi('syncing');
+    try{await pushToSheets(row);entries[0]._synced=true;try{localStorage.setItem('fieldjournal',JSON.stringify(entries));}catch(e){}updateSyncUi('ok');showToast('✓ Saved + synced to Sheets','#4ade80');}
+    catch(e){updateSyncUi('error');showToast('⚠️ Saved locally, Sheets failed','#fb923c');}
+  } else {showToast('✓ Saved locally','#4ade80');}
+}
+
+// ── EXPORT ─────────────────────────────────────────────
+function getEntries(){try{return JSON.parse(localStorage.getItem('fieldjournal')||'[]');}catch(e){return[];}}
+function exportExcel(){
+  const raw=getEntries();if(!raw.length){showToast('No entries to export','#fb923c');return;}
+  const rows=raw.map(e=>{const r={...e};delete r._synced;return r;});
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let C=range.s.c;C<=range.e.c;C++){const cell=ws[XLSX.utils.encode_cell({r:0,c:C})];if(cell){cell.s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1a3a5c'}},alignment:{horizontal:'center'}};}}
+  ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length+2,12)}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Field Journal');
+  XLSX.writeFile(wb,`field-journal-${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('✓ Excel exported!','#4ade80');
+}
+function exportCSV(){
+  const raw=getEntries();if(!raw.length){showToast('No entries to export','#fb923c');return;}
+  const rows=raw.map(e=>{const r={...e};delete r._synced;return r;});
+  const hdr=Object.keys(rows[0]);
+  const csv=[hdr.join(','),...rows.map(r=>hdr.map(h=>{const v=String(r[h]??'').replace(/"/g,'""');return(v.includes(',')||v.includes('"')||v.includes('\n'))?`"${v}"`:v;}).join(','))].join('\n');
+  dlBlob(new Blob([csv],{type:'text/csv'}),`field-journal-${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('✓ CSV exported!','#4ade80');
+}
+function exportJSON(){
+  const raw=getEntries();if(!raw.length){showToast('No entries to export','#fb923c');return;}
+  dlBlob(new Blob([JSON.stringify(raw,null,2)],{type:'application/json'}),`field-journal-${new Date().toISOString().split('T')[0]}.json`);
+  showToast('✓ JSON exported!','#4ade80');
+}
+function dlBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);}
+
+// ── HISTORY ────────────────────────────────────────────
+function openHistory(){
+  const list=document.getElementById('history-list');
+  const entries=getEntries();
+  if(!entries.length){list.innerHTML=`<div style="padding:20px;color:#64748b;font-family:'Space Mono',monospace;font-size:12px;text-align:center">No entries yet.</div>`;}
+  else{
+    const skip=new Set(['Timestamp','Date','Time','Latitude','Longitude','GPS_Acc_m','Weather_Auto','Temp_C','Feels_C','Wind_ms','Precip_mm','_synced']);
+    list.innerHTML=entries.map(e=>{
+      const fields=Object.entries(e).filter(([k,v])=>!skip.has(k)&&v!==''&&v!==null&&v!==undefined).map(([k,v])=>`<span style="color:#64748b">${k.replace(/_/g,' ')}:</span> ${v}`).join(' · ');
+      const gpsStr=e.Latitude?`${parseFloat(e.Latitude).toFixed(4)}, ${parseFloat(e.Longitude).toFixed(4)}`:'No GPS';
+      const badge=e._synced?'<span class="synced-badge">✓ synced</span>':'';
+      return `<div class="history-entry"><div class="history-ts">${e.Date} · ${e.Time}${badge}</div><div class="history-gps">${gpsStr}${e.Weather_Auto?' · '+e.Weather_Auto:''}</div><div class="history-data">${fields||'<span style="color:#64748b">No field data</span>'}</div></div>`;
+    }).join('');
+  }
+  openModal('history-modal');
+}
+
+// ── CUSTOM FIELDS ──────────────────────────────────────
+function loadCustomFields(){
+  try{customFields=JSON.parse(localStorage.getItem('fj_custom_fields')||'[]');}catch(e){customFields=[];}
+  customFields.forEach(cf=>renderCustomCard(cf));
+  updateAddBtnColor();
+}
+function updateAddBtnColor(){document.getElementById('btn-add-field').style.background=PALETTE[customFields.length%PALETTE.length];}
+function setCfType(type,btn){cfType=type;document.querySelectorAll('#addfield-modal .opt-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');document.getElementById('cf-text-opts').style.display=type==='text'?'block':'none';}
+function openAddField(){
+  cfType='scale';
+  document.getElementById('cf-name').value='';document.getElementById('cf-options').value='';
+  document.querySelectorAll('#addfield-modal .opt-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('cf-type-scale').classList.add('selected');
+  document.getElementById('cf-text-opts').style.display='none';
+  renderExistingCustomFields();
+  openModal('addfield-modal');
+}
+function renderExistingCustomFields(){
+  const list=document.getElementById('cf-existing-list');
+  if(!customFields.length){list.innerHTML='<p style="color:#64748b;font-size:12px">No custom fields yet.</p>';return;}
+  list.innerHTML=customFields.map((cf,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${cf.color};flex-shrink:0"></div>
+      <span style="flex:1;font-size:13px;color:var(--text)">${cf.name}</span>
+      <span style="font-size:11px;color:var(--muted)">${cf.type==='scale'?'1–5':'text'}</span>
+    </div>`).join('');
+}
+function addCustomField(){
+  const name=document.getElementById('cf-name').value.trim();
+  if(!name){showToast('⚠️ Enter a field name','#fb923c');return;}
+  const key='custom_'+name.toLowerCase().replace(/\s+/g,'_');
+  if(customFields.find(f=>f.key===key)){showToast('⚠️ Already exists','#fb923c');return;}
+  const color=PALETTE[customFields.length%PALETTE.length];
+  const opts=cfType==='text'?document.getElementById('cf-options').value.split('\n').map(s=>s.trim()).filter(Boolean):[];
+  const cf={name,key,type:cfType,color,opts};
+  customFields.push(cf);
+  try{localStorage.setItem('fj_custom_fields',JSON.stringify(customFields));}catch(e){}
+  renderCustomCard(cf);
+  updateAddBtnColor();
+  renderExistingCustomFields();
+  document.getElementById('cf-name').value='';document.getElementById('cf-options').value='';
+  showToast(`✦ ${name} added`,'#a78bfa');
+}
+function renderCustomCard(cf){
+  const main=document.getElementById('main');
+  const noteCard=document.getElementById('card-note');
+  const card=document.createElement('div');
+  card.className='section-card custom-card';
+  card.id='card-'+cf.key;
+  card.dataset.label=cf.name;
+  card.style.setProperty('--card-color',cf.color);
+  if(hiddenCards.has(cf.key)) card.classList.add('hidden-card');
+  let bodyHTML='';
+  if(cf.type==='scale') bodyHTML=`<div class="range-row" id="range-${cf.key}"></div>`;
+  else{
+    const btns=cf.opts.map(o=>`<button class="cascade-btn" onclick="toggleCascade('${cf.key}','${o}',this)">${o}</button>`).join('');
+    bodyHTML=`<div class="cascade-options" id="opts-${cf.key}">${btns}</div><div class="add-new-row"><input class="add-new-input" id="new-${cf.key}" placeholder="Add option…"/><button class="add-new-btn" onclick="addCascade('${cf.key}')">+</button></div>`;
+  }
+  card.innerHTML=`<div class="section-header" onclick="toggleCard('${cf.key}')"><div class="section-label"><div class="card-dot" style="background:${cf.color}"></div><span class="section-name">${cf.name.toUpperCase()}</span></div><span class="section-value empty" id="val-${cf.key}">—</span><span class="chevron">▾</span></div><div class="section-body">${bodyHTML}</div>`;
+  main.insertBefore(card,noteCard);
+  if(cf.type==='scale'){const row=card.querySelector('.range-row');for(let i=1;i<=5;i++){const b=document.createElement('button');b.className='range-btn';b.textContent=i;b.onclick=()=>setRange(cf.key,i,b);row.appendChild(b);}}
+}
+
+// ── SETTINGS ───────────────────────────────────────────
+function openSettings(){document.getElementById('sheets-url').value=sheetsUrl;document.getElementById('sheets-token').value=sheetsToken;openModal('settings-modal');}
+function clearHistory(){if(confirm('Delete ALL local entries? This cannot be undone.')){try{localStorage.removeItem('fieldjournal');}catch(e){}closeModal('settings-modal');showToast('All entries deleted','#f87171');}}
+
+// ── MODALS ─────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg,color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'#4ade80';t.style.color=['#4ade80','#a78bfa','#34d399'].includes(color)?'#0f1318':'#fff';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ── QUIT ───────────────────────────────────────────────
+function quitApp(){if(confirm('Quit session?')){window.close();document.body.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100dvh;background:#0f1318;color:#4ade80;font-family:'Space Mono',monospace;gap:16px;text-align:center;padding:20px;"><div style="font-size:40px">✓</div><div style="font-size:14px;letter-spacing:0.1em">Session ended</div><div style="font-size:11px;color:#64748b">Close this tab to exit</div></div>`;}}
+</script>
+</body>
+</html>
