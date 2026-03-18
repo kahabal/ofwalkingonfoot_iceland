@@ -701,20 +701,46 @@ async function loadData() {
   if (!SHEET_CSV_URL) return;
   setLiveStatus('loading');
   document.getElementById('loading-msg').textContent = 'Fetching latest entries…';
+
   try {
-    // Add cache-buster
-    const url = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    const res = await fetch(url);
+    // Add cache-buster to bypass CDN cache
+    const url = SHEET_CSV_URL + '&t=' + Date.now();
+
+    // 10 second timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const csv = await res.text();
+
+    if (!csv || csv.trim().length < 10) throw new Error('Empty response from sheet');
+
     allEntries = parseCSV(csv);
+
+    if (!allEntries.length) {
+      // Sheet is published but has no data rows yet
+      setLiveStatus('ok');
+      document.getElementById('last-update').textContent = 'Sheet connected — no entries yet';
+      hideLoading('Sheet connected. No entries recorded yet.');
+      return;
+    }
+
     render();
     setLiveStatus('ok');
     document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+
   } catch(e) {
     setLiveStatus('error');
-    document.getElementById('live-label').textContent = 'Error: ' + e.message;
+    let msg = e.message;
+    if (e.name === 'AbortError') msg = 'Request timed out';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) msg = 'Network error — check sheet is published publicly';
+    document.getElementById('live-label').textContent = '⚠ ' + msg;
+    document.getElementById('loading-msg').textContent = '⚠ ' + msg + '. Click ↻ Refresh to try again.';
   }
+
   hideLoading();
 }
 
@@ -744,7 +770,15 @@ function parseCSVLine(line) {
   return result;
 }
 
-// ── RENDER ─────────────────────────────────────────────
+// ── COORDINATE HELPER ──────────────────────────────────
+// Handles both "52.5154663" and "52,5154663" (Italian locale)
+function toFloat(val) {
+  if (!val) return NaN;
+  return parseFloat(String(val).replace(',', '.'));
+}
+function hasCoords(e) {
+  return !isNaN(toFloat(e.Latitude)) && !isNaN(toFloat(e.Longitude));
+}
 function render() {
   if (!allEntries.length) return;
 
@@ -769,8 +803,8 @@ function render() {
   document.getElementById('stat-last-pace').textContent = last.Pace || '—';
   const locEl = document.getElementById('stat-last-loc');
   if (last.Latitude && last.Longitude) {
-    const lat = parseFloat(last.Latitude).toFixed(5);
-    const lon = parseFloat(last.Longitude).toFixed(5);
+    const lat = toFloat(last.Latitude).toFixed(5);
+    const lon = toFloat(last.Longitude).toFixed(5);
     locEl.innerHTML = `<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:13px">📍 View on map</a>`;
   } else {
     locEl.textContent = '—';
@@ -798,8 +832,8 @@ function renderMap(byDay, days) {
     const dayCoords = [];
 
     entries.forEach((e, entryIdx) => {
-      const lat = parseFloat(e.Latitude);
-      const lon = parseFloat(e.Longitude);
+      const lat = toFloat(e.Latitude);
+      const lon = toFloat(e.Longitude);
       if (isNaN(lat) || isNaN(lon)) return;
       dayCoords.push([lat, lon]);
       allCoords.push([lat, lon]);
@@ -915,8 +949,8 @@ function renderLog(byDay, days) {
       // Build field tags
       const fieldTags = buildFieldTags(e);
 
-      const lat = e.Latitude ? parseFloat(e.Latitude).toFixed(5) : null;
-      const lon = e.Longitude ? parseFloat(e.Longitude).toFixed(5) : null;
+      const lat = e.Latitude ? toFloat(e.Latitude).toFixed(5) : null;
+      const lon = e.Longitude ? toFloat(e.Longitude).toFixed(5) : null;
       const locationHTML = lat ? `<div class="entry-gps"><a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);text-decoration:none">📍 View location</a></div>` : '';
 
       // Wind comparison
@@ -995,6 +1029,8 @@ function renderScaleIcons(field, val) {
   html += `</span>`;
   return html;
 }
+
+function windBeaufort(ms) {
   const v = parseFloat(ms);
   if (isNaN(v)) return '';
   if (v < 0.3) return 'Calm';
@@ -1010,6 +1046,8 @@ function renderScaleIcons(field, val) {
   if (v < 28.5) return 'Storm';
   return 'Violent storm';
 }
+
+function scaleLabel(field, val) {
   const n = parseInt(val);
   if (isNaN(n)) return val;
   const map = SCALE_LABELS[field];
@@ -1072,7 +1110,7 @@ function openDetail(e) {
   const weatherIcon = getWeatherIcon(e.Weather_Auto || e.Weather || '');
 
   document.getElementById('detail-title').textContent = `${weatherIcon} ${e.Weather_Auto || e.Weather || 'Entry'}`;
-  document.getElementById('detail-sub').textContent = `${e.Date || ''} · ${e.Time || ''} · ${e.Latitude ? parseFloat(e.Latitude).toFixed(4)+', '+parseFloat(e.Longitude).toFixed(4) : 'No GPS'}`;
+  document.getElementById('detail-sub').textContent = `${e.Date || ''} · ${e.Time || ''} · ${e.Latitude ? toFloat(e.Latitude).toFixed(4)+', '+toFloat(e.Longitude).toFixed(4) : 'No GPS'}`;
 
   const body = document.getElementById('detail-body');
 
@@ -1160,8 +1198,8 @@ function openDetail(e) {
   }
 
   if (e.Latitude && e.Longitude) {
-    const lat = parseFloat(e.Latitude).toFixed(5);
-    const lon = parseFloat(e.Longitude).toFixed(5);
+    const lat = toFloat(e.Latitude).toFixed(5);
+    const lon = toFloat(e.Longitude).toFixed(5);
     html += `<div class="detail-section"><h3>Location</h3>
       ${e.GPS_Acc_m ? `<div class="detail-row"><span class="d-label">Accuracy</span><span class="d-val">±${e.GPS_Acc_m}m</span></div>` : ''}
       <div style="margin-top:10px"><a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);font-size:14px;font-family:var(--font-serif)">📍 Open this location in Google Maps →</a></div>
@@ -1173,7 +1211,7 @@ function openDetail(e) {
 
   // Pan map to this entry
   if (e.Latitude && e.Longitude) {
-    map.setView([parseFloat(e.Latitude), parseFloat(e.Longitude)], 14);
+    map.setView([toFloat(e.Latitude), toFloat(e.Longitude)], 14);
   }
 }
 
@@ -1228,8 +1266,13 @@ function setLiveStatus(s) {
 function hideLoading(msg) {
   const screen = document.getElementById('loading-screen');
   if (msg) document.getElementById('loading-msg').textContent = msg;
-  setTimeout(() => screen.classList.add('gone'), msg ? 2000 : 800);
+  setTimeout(() => screen.classList.add('gone'), 600);
 }
+
+// Safety net — always dismiss loading screen after 12 seconds no matter what
+setTimeout(() => {
+  document.getElementById('loading-screen').classList.add('gone');
+}, 12000);
 </script>
 </body>
 </html>
