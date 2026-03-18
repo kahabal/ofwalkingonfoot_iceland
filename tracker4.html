@@ -810,15 +810,33 @@ function render() {
     locEl.textContent = '—';
   }
 
-  // Render map
+  // Render map (async — draws routed lines progressively)
   renderMap(byDay, days);
 
-  // Render log
+  // Render log (sync — happens immediately)
   renderLog(byDay, days);
 }
 
+// ── OSRM ROUTING ───────────────────────────────────────
+// Fetches a walking route between two points from OSRM public API
+// Returns array of [lat,lon] pairs, or null if routing fails
+async function fetchOSRMRoute(from, to) {
+  try {
+    // OSRM expects lon,lat order
+    const url = `https://router.project-osrm.org/route/v1/foot/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes?.length) return null;
+    // GeoJSON coords are [lon, lat] — flip to [lat, lon] for Leaflet
+    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+  } catch(e) {
+    return null; // timeout or network error → fallback to straight line
+  }
+}
+
 // ── MAP RENDER ─────────────────────────────────────────
-function renderMap(byDay, days) {
+async function renderMap(byDay, days) {
   // Clear old layers
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -826,23 +844,21 @@ function renderMap(byDay, days) {
 
   const allCoords = [];
 
+  // First pass — place all markers
   days.forEach((day, dayIdx) => {
     const entries = byDay[day];
     const color = dayColors[day];
-    const dayCoords = [];
 
     entries.forEach((e, entryIdx) => {
       const lat = toFloat(e.Latitude);
       const lon = toFloat(e.Longitude);
       if (isNaN(lat) || isNaN(lon)) return;
-      dayCoords.push([lat, lon]);
       allCoords.push([lat, lon]);
 
       const isLatest = dayIdx === days.length - 1 && entryIdx === entries.length - 1;
 
       let marker;
       if (isLatest) {
-        // Pulsing dot for latest position
         const icon = L.divIcon({
           className: '',
           html: `<div class="latest-marker"></div>`,
@@ -858,7 +874,6 @@ function renderMap(byDay, days) {
         marker = L.marker([lat, lon], { icon });
       }
 
-      // Popup
       const weather = e.Weather_Auto || e.Weather || '';
       const temp = e.Temp_C ? `${e.Temp_C}°C` : '';
       marker.bindPopup(`
@@ -868,35 +883,75 @@ function renderMap(byDay, days) {
         ${e.Pace ? `<div class="popup-row">Pace: <span>${e.Pace}</span></div>` : ''}
         ${e.Note ? `<div class="popup-row" style="font-style:italic;margin-top:6px">"${e.Note}"</div>` : ''}
       `);
-
       marker.on('click', () => openDetail(e));
       marker.addTo(map);
       markers.push(marker);
     });
-
-    // Day route line
-    if (dayCoords.length > 1) {
-      const line = L.polyline(dayCoords, {
-        color, weight: 2.5, opacity: 0.7, dashArray: null
-      }).addTo(map);
-      markers.push(line);
-    }
   });
 
-  // Connect days with dashed line
-  if (allCoords.length > 1) {
-    routeLine = L.polyline(allCoords, {
-      color: '#888', weight: 1, opacity: 0.3, dashArray: '4 6'
-    }).addTo(map);
+  // Fit map immediately so user sees something while routes load
+  if (allCoords.length > 0) {
+    if (allCoords.length === 1) map.setView(allCoords[0], 13);
+    else map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
   }
 
-  // Fit map
-  if (allCoords.length > 0) {
-    if (allCoords.length === 1) {
-      map.setView(allCoords[0], 13);
-    } else {
-      map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
+  // Second pass — draw routed lines between consecutive points, day by day
+  // Batch OSRM requests with small delay to avoid rate limiting
+  let straightCount = 0;
+  let routedCount = 0;
+
+  for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+    const day = days[dayIdx];
+    const entries = byDay[day];
+    const color = dayColors[day];
+
+    // Collect valid coords for this day
+    const dayCoords = entries
+      .map(e => {
+        const lat = toFloat(e.Latitude);
+        const lon = toFloat(e.Longitude);
+        return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
+      })
+      .filter(Boolean);
+
+    if (dayCoords.length < 2) continue;
+
+    // Route between each consecutive pair
+    for (let i = 0; i < dayCoords.length - 1; i++) {
+      const from = dayCoords[i];
+      const to = dayCoords[i + 1];
+
+      const routeCoords = await fetchOSRMRoute(from, to);
+
+      if (routeCoords && routeCoords.length > 1) {
+        // Routed path — solid line
+        const line = L.polyline(routeCoords, {
+          color, weight: 2.5, opacity: 0.8
+        }).addTo(map);
+        markers.push(line);
+        routedCount++;
+      } else {
+        // Fallback — straight dashed line with a small indicator
+        const line = L.polyline([from, to], {
+          color, weight: 2, opacity: 0.5, dashArray: '5 8'
+        }).addTo(map);
+        markers.push(line);
+        straightCount++;
+      }
+
+      // Small pause between requests to be polite to OSRM's public API
+      await new Promise(r => setTimeout(r, 100));
     }
+  }
+
+  // Update status to show routing info
+  const total = routedCount + straightCount;
+  if (total > 0) {
+    const note = straightCount > 0
+      ? ` · ${routedCount}/${total} segments routed, ${straightCount} off-road (dashed)`
+      : ` · All ${routedCount} segments routed`;
+    const lbl = document.getElementById('last-update');
+    if (lbl) lbl.textContent = (lbl.textContent || '') + note;
   }
 }
 
