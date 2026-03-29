@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Of Walking on Foot — Iceland</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ── ROOT ── */
+:root {
+  --paper: #f2ede3;
+  --paper2: #ede8dc;
+  --ink: #2a2118;
+  --muted: #8a7a68;
+  --border: #c8b99a;
+  --accent: #2d5a8e;
+  --red: #8e3a2d;
+  --green: #3a6e4a;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1000;
+}
+
+/* ── HEADER ── */
+#site-header {
+  border-bottom: 2px solid var(--ink);
+  padding: 10px 28px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+#title-block {
+  padding-bottom: 10px;
+}
+#title-block .author-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 4px;
+}
+#title-block h1 {
+  font-size: clamp(22px, 3.5vw, 34px);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.1;
+}
+
+/* ── TABS ── */
+#tabs {
+  display: flex;
+  gap: 0;
+  align-self: flex-end;
+}
+.tab-btn {
+  padding: 10px 26px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--paper2);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  margin-right: 4px;
+  transition: all .15s;
+}
+.tab-btn:hover { background: var(--paper); color: var(--ink); }
+.tab-btn.active {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+  border-bottom: 2px solid var(--paper);
+  margin-bottom: -2px;
+  z-index: 2;
+}
+.tab-btn .tab-icon { font-size: 14px; margin-right: 7px; }
+
+/* ── VIEWS ── */
+#view-diary, #view-tracker { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+#view-diary.active, #view-tracker.active { display: flex; }
+
+/* ── DIARY VIEW ── */
+#diary-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 5px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#diary-legend {
+  display: flex; flex-wrap: wrap; gap: 5px 16px;
+  padding: 7px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.dli { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.dlic { font-size: 14px; line-height: 1; }
+#diary-canvas-wrap {
+  flex: 1; overflow: hidden; position: relative; cursor: grab;
+}
+#diary-canvas-wrap.pan { cursor: grabbing; }
+#dial { display: block; position: absolute; top: 0; left: 0; }
+#diary-zoom-bar {
+  position: absolute; top: 10px; left: 10px; display: flex; gap: 4px; align-items: center; z-index: 10;
+}
+.dzbt { width: 28px; height: 28px; background: var(--paper); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; font-size: 16px; color: var(--muted); display: flex; align-items: center; justify-content: center; font-family: monospace; }
+.dzbt:hover { background: var(--border); }
+.dzrst { width: 42px; font-size: 9px; font-family: var(--font-mono); height: 24px; }
+.dzhint { font-family: var(--font-mono); font-size: 8px; color: var(--muted); opacity: .65; }
+#dtip { display: none; position: absolute; z-index: 50; background: #2a2118; color: #f2ede3; font-family: var(--font-mono); font-size: 11px; padding: 5px 10px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
+#dnp { display: none; position: absolute; z-index: 50; background: #f8f3e8; border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px; max-width: 230px; font-family: var(--font-serif); font-size: 14px; font-style: italic; line-height: 1.5; color: var(--ink); pointer-events: none; }
+#dnpd { font-family: var(--font-mono); font-size: 9px; color: var(--muted); font-style: normal; display: block; margin-bottom: 4px; letter-spacing: .07em; text-transform: uppercase; }
+#diary-status { font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding: 5px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+/* ── TRACKER VIEW ── */
+#tracker-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 24px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+}
+#live-status { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0; animation: blink 2s infinite; }
+.live-dot.ok { background: var(--green); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+#btn-refresh { background: none; border: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 9px; padding: 3px 9px; border-radius: 3px; cursor: pointer; }
+#btn-refresh:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+#stats-bar { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.stat-cell { flex: 1; min-width: 80px; padding: 8px 16px; border-right: 1px solid var(--border); text-align: center; }
+.stat-cell:last-child { border-right: none; }
+.stat-num { font-size: 22px; font-weight: 300; color: var(--accent); display: block; line-height: 1; }
+.stat-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: 3px; display: block; }
+#tracker-layout { display: grid; grid-template-columns: 1fr 360px; flex: 1; overflow: hidden; }
+@media (max-width: 900px) { #tracker-layout { grid-template-columns: 1fr; } }
+#map-col { position: relative; border-right: 1px solid var(--border); }
+#map { width: 100%; height: 100%; }
+.leaflet-container { font-family: var(--font-serif); background: #e8e4d8; }
+.leaflet-popup-content-wrapper { background: var(--paper); border: 1px solid var(--border); border-radius: 4px; box-shadow: 4px 4px 0 rgba(0,0,0,.1); font-family: var(--font-serif); }
+.leaflet-popup-tip { background: var(--paper); }
+.leaflet-popup-content { margin: 10px 14px; min-width: 180px; }
+.popup-time { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+.popup-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.popup-row { font-size: 11px; color: var(--muted); }
+.popup-row span { color: var(--ink); font-weight: 500; }
+.day-marker { width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: white; box-shadow: 0 2px 5px rgba(0,0,0,.3); }
+.latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
+@keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
+#log-col { overflow-y: auto; }
+#log-header { padding: 12px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--paper); z-index: 10; }
+#log-header h2 { font-size: 10px; font-weight: 400; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.day-group { border-bottom: 2px solid var(--border); }
+.day-heading { padding: 12px 18px 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: var(--paper2); border-bottom: 1px solid var(--border); cursor: pointer; }
+.day-heading:hover { background: #e5e0d2; }
+.day-name { font-size: 16px; font-weight: 300; font-style: italic; }
+.day-meta { font-family: var(--font-mono); font-size: 9px; color: var(--muted); text-align: right; line-height: 1.5; }
+.day-count { background: var(--accent); color: white; font-family: var(--font-mono); font-size: 8px; padding: 1px 6px; border-radius: 8px; }
+.day-entries { display: block; }
+.day-entries.collapsed { display: none; }
+.entry { padding: 10px 18px; border-bottom: 1px solid #ddd8cc; cursor: pointer; transition: background .15s; }
+.entry:hover { background: #ede8dc; }
+.entry-time { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+.entry-weather { font-size: 13px; margin-bottom: 5px; }
+.entry-fields { display: flex; flex-wrap: wrap; gap: 4px; }
+.field-tag { font-family: var(--font-mono); font-size: 8px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); }
+.field-tag.has-val { border-color: var(--accent); color: var(--accent); }
+.field-tag.pain-tag { border-color: var(--red); color: var(--red); }
+.entry-note { font-size: 12px; font-style: italic; color: var(--muted); margin-top: 5px; border-left: 2px solid var(--border); padding-left: 7px; }
+.entry-gps { font-family: var(--font-mono); font-size: 8px; color: #aaa; margin-top: 4px; }
+.comparison-block { margin-top: 7px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; font-size: 11px; }
+.comparison-row { display: grid; grid-template-columns: 80px 1fr; align-items: center; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.comparison-row:last-child { border-bottom: none; }
+.comparison-row.forecasted { background: rgba(45,90,142,.04); }
+.comparison-row.perceived  { background: rgba(122,79,45,.04); }
+.comp-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.comp-val { font-weight: 500; }
+#detail-modal { display: none; position: fixed; inset: 0; background: rgba(26,22,18,.7); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+#detail-modal.open { display: flex; }
+#detail-box { background: var(--paper); border: 1px solid var(--border); border-radius: 4px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 6px 6px 0 rgba(0,0,0,.12); }
+#detail-header { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+#detail-title { font-size: 18px; font-weight: 300; font-style: italic; }
+#detail-sub { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
+#detail-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); }
+#detail-body { padding: 14px 18px 18px; }
+.detail-section { margin-bottom: 14px; }
+.detail-section h3 { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; }
+.detail-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; border-bottom: 1px dotted #ddd; }
+.d-label { color: var(--muted); } .d-val { font-weight: 500; }
+.detail-comparison { border: 1px solid var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.detail-comp-row { display: grid; grid-template-columns: 90px 1fr; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.detail-comp-row:last-child { border-bottom: none; }
+.detail-comp-row.forecasted { background: rgba(45,90,142,.04); }
+.detail-comp-row.perceived  { background: rgba(122,79,45,.04); }
+.dc-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); align-self: center; }
+.scale-icons { display: flex; gap: 2px; align-items: center; }
+.scale-icon { font-size: 12px; opacity: 0.15; }
+.scale-icon.on { opacity: 1; }
+#foot { text-align: center; padding: 10px; font-family: var(--font-mono); font-size: 8px; color: var(--border); border-top: 1px solid var(--border); }
+#loading-screen { position: fixed; inset: 0; background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 900; transition: opacity .5s; }
+#loading-screen.gone { opacity: 0; pointer-events: none; }
+.loading-title { font-size: 24px; font-weight: 300; font-style: italic; }
+.loading-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.loading-bar { width: 140px; height: 1px; background: var(--border); overflow: hidden; }
+.loading-fill { width: 60%; height: 100%; background: var(--ink); animation: lslide 1.4s ease-in-out infinite; }
+@keyframes lslide { 0%{transform:translateX(-100%)} 100%{transform:translateX(260%)} }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-title">Of Walking on Foot</div>
+  <div class="loading-sub">Iceland · 2025</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-sub" id="loading-msg">Composing the field diary…</div>
+</div>
+
+<!-- SHARED HEADER -->
+<div id="site-header">
+  <div id="title-block">
+    <span class="author-name">Dario J Laganà</span>
+    <h1>Of Walking on Foot — Iceland</h1>
+  </div>
+  <div id="tabs">
+    <button class="tab-btn active" id="tab-diary" onclick="switchTab('diary')">
+      <span class="tab-icon">◉</span>Radial Diary
+    </button>
+    <button class="tab-btn" id="tab-tracker" onclick="switchTab('tracker')">
+      <span class="tab-icon">🗺</span>Expedition Tracker
+    </button>
+  </div>
+</div>
+
+<!-- DIARY VIEW -->
+<div id="view-diary" class="active">
+  <div id="diary-status">Loading…</div>
+  <div id="diary-legend"></div>
+  <div id="diary-canvas-wrap">
+    <canvas id="dial"></canvas>
+    <div id="diary-zoom-bar">
+      <button class="dzbt" onclick="dZoomBy(1.2)">+</button>
+      <button class="dzbt" onclick="dZoomBy(0.85)">−</button>
+      <button class="dzbt dzrst" onclick="dResetZoom()">reset</button>
+      <span class="dzhint">scroll · zoom</span>
+    </div>
+    <div id="dtip"></div>
+    <div id="dnp"><span id="dnpd"></span><span id="dnpt"></span></div>
+  </div>
+</div>
+
+<!-- TRACKER VIEW -->
+<div id="view-tracker">
+  <div id="tracker-topbar">
+    <div id="live-status">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-label">Connecting…</span>
+      <span id="last-update"></span>
+    </div>
+    <button id="btn-refresh" onclick="loadData()">↻ Refresh</button>
+  </div>
+  <div id="stats-bar">
+    <div class="stat-cell"><span class="stat-num" id="stat-days">—</span><span class="stat-label">Days on foot</span></div>
+    <div class="stat-cell"><span class="stat-num" id="stat-last-loc" style="font-size:12px;cursor:pointer"></span><span class="stat-label">Last location</span></div>
+  </div>
+  <div id="tracker-layout">
+    <div id="map-col"><div id="map"></div></div>
+    <div id="log-col">
+      <div id="log-header"><h2>Field Diary</h2></div>
+      <div id="log-list"></div>
+      <div id="foot">Of Walking on Foot · Iceland · Updates daily at midnight</div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL (tracker) -->
+<div id="detail-modal" onclick="closeDetail(event)">
+  <div id="detail-box">
+    <div id="detail-header">
+      <div><div id="detail-title">—</div><div id="detail-sub">—</div></div>
+      <button id="detail-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHER ────────────────────────────────────────
+let diaryActive = true;
+let trackerInited = false;
+let diaryInited = false;
+
+function switchTab(tab) {
+  diaryActive = tab === 'diary';
+  document.getElementById('view-diary').classList.toggle('active', diaryActive);
+  document.getElementById('view-tracker').classList.toggle('active', !diaryActive);
+  document.getElementById('tab-diary').classList.toggle('active', diaryActive);
+  document.getElementById('tab-tracker').classList.toggle('active', !diaryActive);
+
+  if (diaryActive && !diaryInited) {
+    diaryInited = true;
+    diaryInit();
+  }
+  if (!diaryActive && !trackerInited) {
+    trackerInited = true;
+    trackerInit();
+  }
+  // Invalidate map size when switching to tracker
+  if (!diaryActive && typeof map !== 'undefined' && map) {
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+}
+
+// ── DIARY SCRIPT ────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCXCLzZy5wWJRXZ0AxDVilpS6wbs89MNFw0hxtIyVi_8y6t5m-1qL9I24xqBks8G3JMNZY1B_sAoAX/pub?output=csv';
+const USE_DEMO = true; // ← set false for live data
+
+// START ANGLE: day 1 at lower-left quarter (~210° = 7π/6)
+// counterclockwise, so 210° puts day 1 solidly in the lower-left
+const START_ANGLE = Math.PI * (210/180);
+
+// ─────────────────────────────────────────────
+// RINGS — center → outside
+// boolean/presence fields near center, scales outside
+// ─────────────────────────────────────────────
+const RINGS = [
+  { key:'Note',          label:'Note',         icon:'✎',  color:'#b8a888', type:'note'       },
+  { key:'_state',        label:'State',        icon:'🌀', color:'#8a88b8', type:'state'      }, // trance + loop + pain
+  { key:'Solitude',      label:'Solitude',     icon:'🚶', color:'#8a7a5a', type:'iconscale'  },
+  { key:'Tiredness',     label:'Tiredness',    icon:'😴', color:'#b07a52', type:'iconscale'  },
+  { key:'Trolley',       label:'Trolley',      icon:'🏋️', color:'#c4a068', type:'iconscale'  },
+  { key:'Pace',          label:'Pace',         icon:'👟', color:'#a07848', type:'pace'       },
+  { key:'Weather',       label:'Weather',      icon:'🌤', color:'#88a8b8', type:'wxicon'     },
+  { key:'Cold',          label:'Cold',         icon:'🥶', color:'#7a9aaa', type:'iconscale'  },
+  { key:'Wind_Scale',    label:'Wind',         icon:'💨', color:'#9ab0b8', type:'iconscale'  },
+  { key:'Terrain',       label:'Terrain',      icon:'🗺', color:'#6a8a5a', type:'terrain'    },
+  { key:'Sleep_Quality', label:'Sleep',        icon:'🌙', color:'#d4956a', type:'iconscale'  },
+  { key:'_encounters',   label:'Encounters',   icon:'🐾', color:'#7a8a5a', type:'encounters' },
+  { key:'_gps',          label:'Location',     icon:'📍', color:'#c06050', type:'gps'        },
+];
+
+// Icon per level for each iconscale field (1→5)
+const LEVEL_ICONS = {
+  Sleep_Quality: ['😵','😔','😐','😌','✨'],
+  Tiredness:     ['🏃','🚶','😤','😓','💀'],
+  Cold:          ['🥵','😊','🧥','🥶','🧊'],
+  Wind_Scale:    ['🍃','🌬️','💨','🌪️','⛈️'],
+  Solitude:      ['🧍','🧍','🧍','🧍','🧍'], // same icon, opacity varies in rendering
+  Trolley:       ['2','3','3','4','5'],        // number shown next to weight icon
+  Pace:          ['🐢','🚶','🏃','😵','⚡'],
+};
+
+// Trolley opacity per level (light=faint, heavy=bold)
+const TROLLEY_ALPHA = [0.35, 0.55, 0.72, 0.88, 1.0];
+// Solitude opacity per level (1=barely alone=faint, 5=total solitude=strong)
+const SOLITUDE_ALPHA = [0.15, 0.30, 0.50, 0.72, 0.95];
+
+const PACE_SCALE   = {'Low':1,'Medium':2,'High':3,'Suffering':4,'Hype':5};
+
+// Weather → direct icon (not a scale)
+const WEATHER_ICONS = {
+  'sun':'☀️', 'clear':'☀️',
+  'partly':'⛅', 'partly cloudy':'⛅',
+  'cloud':'☁️', 'overcast':'☁️',
+  'drizzle':'🌦️', 'shower':'🌦️',
+  'rain':'🌧️',
+  'heavy rain':'🌧️',
+  'storm':'⛈️', 'thunder':'⛈️',
+  'snow':'❄️',
+  'fog':'🌫️', 'mist':'🌫️',
+  'wind':'🌬️', 'windy':'🌬️',
+};
+
+// Terrain keyword → icon
+const TERRAIN_ICONS = {
+  'lava':'🪨', 'rock':'🪨', 'rocky':'🪨',
+  'moss':'🌿', 'grass':'🌿', 'meadow':'🌿',
+  'sand':'🏖️', 'beach':'🏖️',
+  'mud':'💧', 'bog':'💧', 'marsh':'💧',
+  'snow':'❄️', 'ice':'❄️', 'glacier':'❄️',
+  'asphalt':'🛣️', 'road':'🛣️', 'gravel':'🛣️',
+  'forest':'🌲', 'birch':'🌲', 'tree':'🌲',
+  'mountain':'⛰️', 'ridge':'⛰️', 'hill':'⛰️',
+  'river':'🏞️', 'stream':'🏞️', 'waterfall':'🏞️',
+  'field':'🌾', 'heather':'🌾', 'highland':'🌾',
+};
+const D_ANIMAL_ICONS = {
+  'dog':'🐕','cat':'🐈','horse':'🐴','cow':'🐄','bird':'🐦','fox':'🦊',
+  'deer':'🦌','sheep':'🐑','raven':'🦅','whale':'🐳','seal':'🦭',
+  'puffin':'🐧','reindeer':'🦌','arctic fox':'🦊','mink':'🦦','rabbit':'🐇',
+};
+
+// ─────────────────────────────────────────────
+// DEMO DATA
+// ─────────────────────────────────────────────
+function rng(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+function generateDemoData() {
+  const paces    = ['Low','Medium','Medium','High','High','Suffering','Hype'];
+
+  // Iceland terrain by region — changes as you circle the island
+  const terrainsByPhase = [
+    ['Lava; Rock','Lava Field','Rock','Moss; Lava'],                    // days 1-15: SW lava fields
+    ['Lava; Moss','Glacier','Snow; Rock','Highland'],                    // days 16-25: interior highlands
+    ['Gravel; River','Waterfall; Rock','River; Moss','Mountain; Rock'], // days 26-40: north fjords
+    ['Beach; Sand','Sea; Rock','Lava; Sand','Coastal; Grass'],          // days 41-55: north coast
+    ['Bog; Moss','Heather; Field','Grass; River','Highland; Moss'],     // days 56-68: east
+    ['Lava; Ash','Volcano; Rock','Glacier; Ice','Moss; Lava'],          // days 69-78: south volcanic
+    ['Gravel; Moss','Lava; Road','Asphalt; Grass','Coastal'],           // days 79-85: back to SW
+  ];
+
+  const weathers = ['Sun','Partly Cloudy','Cloud','Rain','Wind','Storm','Fog','Snow'];
+  const animals  = [
+    'Dog; Fox','Sheep; Horse; Raven','Arctic Fox',
+    'Puffin; Bird; Seal','Raven; Fox; Sheep','Horse; Cow',
+    'Bird; Puffin; Arctic Fox; Rabbit','Sheep',
+    'Whale; Seal; Bird','Fox; Raven; Dog; Deer',
+    'Seal','Puffin; Raven','Horse; Sheep; Dog','Arctic Fox; Fox',
+    'Bird; Whale','Reindeer; Raven','Sheep; Cow; Horse',
+  ];
+  const notes = [
+    'First day on the road. Body still learning the weight of everything.',
+    'Passed a farmhouse. An old man waved and didn\'t stop waving.',
+    'Wind so strong I had to lean into it like a wall. No choice.',
+    'Found a perfect flat rock by the river. Slept well.',
+    'Saw an arctic fox at dusk. It watched me for a long time.',
+    'Fog so thick I walked by sound alone for two hours.',
+    'Lava field. Each step like stepping on something sleeping.',
+    'The light changed four times in one hour. Impossible to photograph.',
+    'Trance state by midday. The walk was walking itself.',
+    'Feet swollen but the sky was the clearest I\'ve ever seen.',
+    'Rain since before dawn. Everything wet. Keep moving.',
+    'Met a farmer who gave me coffee and said nothing for twenty minutes.',
+    'The glacier looked closer than it was. It always does.',
+    'Pain in both knees. Stopped early. Good decision.',
+    'First day without wind in two weeks.',
+    'Volcanic ash on everything. The smell of sulfur by evening.',
+    'Completely alone for the third day. It is becoming natural.',
+    'A raven followed me for four kilometers.',
+    'The midnight sun made it impossible to sleep.',
+    'Body lighter than expected. Something is adjusting.',
+  ];
+
+  // Iceland GPS arc — counterclockwise from Reykjavík
+  // Approximate waypoints around the island
+  const gpsWaypoints = [
+    [64.13, -21.82], // Reykjavík
+    [64.25, -22.50], // Reykjanes
+    [63.98, -22.68], // SW coast
+    [63.85, -21.90], // south coast start
+    [63.75, -20.30], // Vík area
+    [63.80, -18.10], // Skaftafell
+    [64.10, -16.20], // Höfn
+    [64.90, -14.50], // east fjords
+    [65.60, -13.80], // east coast
+    [65.90, -14.60], // north east
+    [66.18, -15.60], // Húsavík area
+    [66.05, -17.35], // Akureyri area
+    [65.70, -19.50], // north coast
+    [65.30, -21.60], // Dalvík area
+    [65.00, -22.70], // Westfjords south
+    [64.60, -23.40], // Snæfellsnes
+    [64.13, -21.82], // back near Reykjavík
+  ];
+
+  const days = [];
+  const totalDays = 85;
+
+  for (let d = 0; d < totalDays; d++) {
+    // Interpolate GPS along the waypoints
+    const t = d / (totalDays - 1);
+    const wpCount = gpsWaypoints.length - 1;
+    const wpIdx = Math.floor(t * wpCount);
+    const wpT = (t * wpCount) - wpIdx;
+    const wp0 = gpsWaypoints[Math.min(wpIdx, wpCount)];
+    const wp1 = gpsWaypoints[Math.min(wpIdx + 1, wpCount)];
+    const lat = wp0[0] + (wp1[0] - wp0[0]) * wpT + (Math.random() - 0.5) * 0.04;
+    const lon = wp0[1] + (wp1[1] - wp0[1]) * wpT + (Math.random() - 0.5) * 0.06;
+
+    // Terrain phase
+    const phase = Math.floor(d / totalDays * terrainsByPhase.length);
+    const phaseTerrain = terrainsByPhase[Math.min(phase, terrainsByPhase.length - 1)];
+
+    // Narrative arcs — make data feel real
+    // Tiredness builds over weeks, recovers after rest days
+    const weekInTrip = Math.floor(d / 7);
+    const dayInWeek = d % 7;
+    const baseExhaustion = Math.min(4, 1 + Math.floor(weekInTrip * 0.4));
+    const restDayBonus = dayInWeek === 6 ? -2 : 0; // slightly better on 7th day
+    const tirednessBase = Math.max(1, Math.min(5, baseExhaustion + restDayBonus + rng(-1,1)));
+
+    // Cold increases as we go north (days 20-50) then decreases
+    const northPhase = d > 15 && d < 55;
+    const coldBase = northPhase ? rng(3,5) : rng(1,3);
+
+    // Wind spikes around storms
+    const stormDay = d % 11 === 7; // storm every ~11 days
+    const windBase = stormDay ? rng(4,5) : rng(1,4);
+
+    // Solitude high except when near towns (scattered days)
+    const nearTown = [5,12,22,30,38,47,55,63,71,78].includes(d);
+    const solitudeBase = nearTown ? rng(1,2) : rng(3,5);
+
+    // Sleep varies with terrain quality
+    const sleepBase = rng(2,5);
+
+    // Trance more common in second half
+    const tranceChance = d > 40 ? 0.4 : 0.2;
+    const loopChance = 0.25;
+
+    // Missing data — realistic (some days not everything logged)
+    const hasSleep    = Math.random() > 0.12;
+    const hasTired    = Math.random() > 0.08;
+    const hasCold     = Math.random() > 0.15;
+    const hasWind     = Math.random() > 0.15;
+    const hasSolitude = Math.random() > 0.10;
+    const hasTrolley  = Math.random() > 0.20;
+    const hasPace     = Math.random() > 0.12;
+    const hasTerrain  = Math.random() > 0.10;
+    const hasPain     = Math.random() > 0.60; // pain not every day
+    const hasWeather  = Math.random() > 0.08;
+    const hasHumans   = Math.random() > 0.55;
+    const hasTrance   = Math.random() < tranceChance;
+    const hasLoop     = Math.random() < loopChance;
+    const hasNote     = Math.random() > 0.35;
+    const hasAnimals  = Math.random() > 0.45;
+
+    // Format date
+    const startDate = new Date(2025, 5, 1); // June 1
+    const entryDate = new Date(startDate);
+    entryDate.setDate(startDate.getDate() + d);
+    const dd = String(entryDate.getDate()).padStart(2,'0');
+    const mm = String(entryDate.getMonth()+1).padStart(2,'0');
+    const yyyy = entryDate.getFullYear();
+
+    days.push({
+      date: `${dd}/${mm}/${yyyy}`,
+      dayNum: d + 1,
+      entries: [{
+        Sleep_Quality: hasSleep    ? String(sleepBase) : '',
+        Tiredness:     hasTired    ? String(tirednessBase) : '',
+        Cold:          hasCold     ? String(coldBase) : '',
+        Wind_Scale:    hasWind     ? String(windBase) : '',
+        Solitude:      hasSolitude ? String(solitudeBase) : '',
+        Trolley:       hasTrolley  ? String(rng(2,4)) : '',
+        Pace:          hasPace     ? paces[rng(0,paces.length-1)] : '',
+        Terrain:       hasTerrain  ? phaseTerrain[rng(0,phaseTerrain.length-1)] : '',
+        Pain:          hasPain     ? ['Knees','Feet','Back','Shoulders','Hips'][rng(0,4)] : '',
+        Weather:       hasWeather  ? weathers[rng(0,weathers.length-1)] : '',
+        Humans:        hasHumans   ? 'Yes' : 'No',
+        Trance:        hasTrance   ? 'Yes' : 'No',
+        Mental_Loop:   hasLoop     ? 'Yes' : 'No',
+        Note:          hasNote     ? notes[d % notes.length] : '',
+        Animals:       hasAnimals  ? animals[rng(0,animals.length-1)] : '',
+        Latitude:      String(lat.toFixed(5)),
+        Longitude:     String(lon.toFixed(5)),
+      }]
+    });
+  }
+  return days;
+}
+
+// ─────────────────────────────────────────────
+// DATA UTILS
+// ─────────────────────────────────────────────
+function d_toFloat(v){ return parseFloat(String(v||'').replace(',','.')); }
+
+function d_parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = d_parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = d_parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h,i) => obj[h.trim()] = (vals[i]||'').trim());
+    return obj;
+  }).filter(e => e.Timestamp || e.Date);
+}
+
+function d_parseCSVLine(line) {
+  const result=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;continue;}
+    if(ch===','&&!inQ){result.push(cur);cur='';continue;}
+    cur+=ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function groupByDay(entries) {
+  const byDay={};
+  entries.forEach(e=>{
+    const day=e.Date||(e.Timestamp||'').split('T')[0]||'Unknown';
+    if(!byDay[day]) byDay[day]=[];
+    byDay[day].push(e);
+  });
+  return Object.keys(byDay).sort().map((d,i)=>({date:d, dayNum:i+1, entries:byDay[d]}));
+}
+
+// Returns numeric value 0-5, or null if not recorded
+function dayValue(day, ring) {
+  const ee = day.entries;
+  if (ring.type === 'scale') {
+    const vals = ee.map(e=>parseFloat(e[ring.key])).filter(v=>!isNaN(v)&&v>0);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }
+  if (ring.type === 'iconscale') {
+    const vals = ee.map(e=>parseFloat(e[ring.key])).filter(v=>!isNaN(v)&&v>0);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }
+  if (ring.type === 'pace') {
+    const vals = ee.map(e=>PACE_SCALE[e[ring.key]]).filter(Boolean);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }
+  if (ring.type === 'wxicon') {
+    // Return the weather icon string directly, not a number
+    for(const e of ee) {
+      const w = e['Weather'] || e['Weather_Auto'] || '';
+      if(!w) continue;
+      const wl = w.toLowerCase();
+      for(const[k,icon] of Object.entries(WEATHER_ICONS)) {
+        if(wl.includes(k)) return icon; // return icon string
+      }
+    }
+    return null;
+  }
+  if (ring.type === 'terrain') {
+    // Return the FIRST/primary terrain icon only — unique per day
+    for(const e of ee) {
+      const t = e['Terrain'] || '';
+      if(!t.trim()) continue;
+      const parts = t.split(/[;,]/);
+      for(const p of parts) {
+        const pl = p.trim().toLowerCase();
+        for(const[k,icon] of Object.entries(TERRAIN_ICONS)) {
+          if(pl.includes(k)) return icon; // single icon, first match
+        }
+      }
+      return '🗺️'; // fallback
+    }
+    return null;
+  }
+  if (ring.type === 'state') {
+    // Trance + Mental Loop + Pain — returns bitmask
+    const hasTrance = ee.some(e=>e['Trance']&&e['Trance'].toLowerCase()==='yes');
+    const hasLoop   = ee.some(e=>e['Mental_Loop']&&e['Mental_Loop'].toLowerCase()==='yes');
+    const hasPain   = ee.some(e=>e['Pain']&&e['Pain'].trim()&&e['Pain'].toLowerCase()!=='no');
+    if(!hasTrance && !hasLoop && !hasPain) return null;
+    return { trance:hasTrance, loop:hasLoop, pain:hasPain };
+  }
+  if (ring.type === 'encounters') {
+    // Returns { humans, animals }
+    const hasHumans = ee.some(e=>e['Humans']&&e['Humans'].toLowerCase()==='yes');
+    const animStr   = dayAnimals(day);
+    if(hasHumans || animStr) return { humans: hasHumans, animStr };
+    return null;
+  }
+  if (ring.type === 'bool') {
+    const has = ee.some(e=>e[ring.key]&&e[ring.key].trim()&&e[ring.key].toLowerCase()!=='no');
+    return has ? 1 : null;
+  }
+  if (ring.type === 'note') {
+    return ee.some(e=>e.Note&&e.Note.trim()) ? 1 : null;
+  }
+  if (ring.type === 'gps') {
+    return dayFirstGPS(day) ? 1 : null;
+  }
+  return null;
+}
+
+function dayNote(day) {
+  for(const e of day.entries) if(e.Note&&e.Note.trim()) return e.Note.trim();
+  return null;
+}
+
+function dayFirstGPS(day) {
+  for(const e of day.entries){
+    const lat=d_toFloat(e.Latitude), lon=d_toFloat(e.Longitude);
+    if(!isNaN(lat)&&!isNaN(lon)&&lat!==0) return [lat,lon];
+  }
+  return null;
+}
+
+function dayAnimals(day) {
+  for(const e of day.entries){
+    if(e.Animals&&e.Animals.trim()) return e.Animals;
+  }
+  return null;
+}
+
+function animalIcons(str) {
+  if(!str) return '';
+  return str.split(/[;,]/).map(a=>{
+    const k=a.trim().toLowerCase();
+    return D_ANIMAL_ICONS[k]||a.trim();
+  }).join(' ');
+}
+
+// ─────────────────────────────────────────────
+// DRAWING
+// ─────────────────────────────────────────────
+let noteHitAreas = [];
+let gpsHitAreas  = [];
+let latestGPSPos = null;
+let staticCanvas = null;
+let pulsePhase = 0;
+
+function hexToRgba(hex, alpha) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Render a single emoji/text icon centered at (x,y) with given size and alpha
+function drawIcon(ctx, icon, x, y, size, alpha=1) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `${size}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(icon, x, y);
+  ctx.restore();
+}
+
+function draw(days) {
+  const canvas = document.getElementById('dial');
+  // Make canvas larger than viewport — circle can overflow
+  const size = Math.max(window.innerWidth, window.innerHeight) * 1.1;
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const cx = size/2, cy = size/2;
+  const N = days.length;
+
+  noteHitAreas = [];
+  gpsHitAreas  = [];
+  latestGPSPos = null;
+
+  ctx.clearRect(0,0,size,size);
+  ctx.fillStyle='#f2ede3';
+  ctx.fillRect(0,0,size,size);
+
+  if(N===0){ return; }
+
+  // Layout — large circle, bigger center void, rings spread wide
+  const innerR = size * 0.14;
+  const outerR = size * 0.46;
+  const ringCount = RINGS.length;
+  const ringW = (outerR - innerR) / ringCount;
+
+  // Angle helpers — counterclockwise from SW (225°)
+  // counterclockwise: angle decreases as day index increases
+  const totalAngle = Math.PI * 2;
+  const wedgeA = totalAngle / N;
+
+  function wedgeAngles(dayIdx) {
+    // counterclockwise: start at SW, go left (decreasing angle)
+    const start = START_ANGLE - dayIdx * wedgeA;
+    const end   = START_ANGLE - (dayIdx+1) * wedgeA;
+    return { start, end, mid: (start+end)/2 };
+  }
+
+  // Concentric guides
+  for(let r=0;r<=ringCount;r++){
+    ctx.beginPath();
+    ctx.arc(cx,cy,innerR+r*ringW,0,Math.PI*2);
+    ctx.strokeStyle='rgba(180,155,120,0.15)';
+    ctx.lineWidth=0.5;
+    ctx.stroke();
+  }
+
+  // Radial dividers — visible lines between each day wedge
+  for(let d=0;d<N;d++){
+    const {start} = wedgeAngles(d);
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(start)*innerR, cy+Math.sin(start)*innerR);
+    ctx.lineTo(cx+Math.cos(start)*outerR, cy+Math.sin(start)*outerR);
+    ctx.strokeStyle='rgba(160,140,110,0.45)';
+    ctx.lineWidth=0.8;
+    ctx.stroke();
+  }
+
+  // DATA
+  days.forEach((day, dayIdx) => {
+    const {start, end, mid} = wedgeAngles(dayIdx);
+    const gapA = Math.min(0.018, wedgeA * 0.08);
+    const drawStart = start - gapA;
+    const drawEnd   = end   + gapA;
+    const isLatest  = dayIdx === N-1;
+
+    RINGS.forEach((ring, ringIdx) => {
+      const rInner = innerR + ringIdx * ringW;
+      const rOuter = innerR + (ringIdx+1) * ringW;
+      const rMid   = (rInner + rOuter) / 2;
+      const val    = dayValue(day, ring);
+
+      // GPS ring gets a subtle background; all others transparent
+      if(ring.type === 'gps' && val !== null) {
+        ctx.beginPath();
+        ctx.arc(cx,cy,rOuter-0.5, drawEnd, drawStart);
+        ctx.arc(cx,cy,rInner+0.5, drawStart, drawEnd, true);
+        ctx.closePath();
+        ctx.fillStyle = hexToRgba(ring.color, 0.10);
+        ctx.fill();
+      }
+
+      // Faint arc border on rings that have data
+      if(val !== null) {
+        ctx.beginPath();
+        ctx.arc(cx,cy,rOuter-1,drawEnd,drawStart);
+        ctx.strokeStyle=hexToRgba(ring.color, ring.type==='gps' ? 0.30 : 0.18);
+        ctx.lineWidth=0.4;
+        ctx.stroke();
+      }
+
+      if(val === null) return; // no data — skip icons
+
+      // ── ICON RENDERING ──
+      const iconSize = Math.max(9, Math.min(ringW * 0.68, 20));
+      const spread   = Math.abs(drawStart - drawEnd) * 0.72;
+
+      if(ring.type === 'note') {
+        const nx = cx + Math.cos(mid)*rMid;
+        const ny = cy + Math.sin(mid)*rMid;
+        const btnR = Math.max(3, ringW*0.28);
+        ctx.beginPath();
+        ctx.arc(nx,ny,btnR,0,Math.PI*2);
+        ctx.fillStyle = hexToRgba(ring.color, 0.85);
+        ctx.fill();
+        const note = dayNote(day);
+        if(note) noteHitAreas.push({x:nx, y:ny, r:btnR+5, dayNum:day.dayNum, note, date:day.date});
+        ctx.save();
+        ctx.font=`${Math.max(5,ringW*0.3)}px serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.globalAlpha=0.9; ctx.fillStyle='#f2ede3';
+        ctx.fillText('✎',nx,ny+0.5);
+        ctx.restore();
+
+      } else if(ring.type === 'gps') {
+        const px = cx + Math.cos(mid)*rMid;
+        const py = cy + Math.sin(mid)*rMid;
+        const gps = dayFirstGPS(day);
+        const hitR = Math.max(10, iconSize * 0.8);
+        if(isLatest) {
+          latestGPSPos = {x:px, y:py, gps};
+          if(gps) gpsHitAreas.push({x:px, y:py, r:hitR+4, dayNum:day.dayNum, lat:gps[0], lon:gps[1]});
+        } else {
+          drawIcon(ctx, '📍', px, py, iconSize*1.2, 0.92);
+          if(gps) gpsHitAreas.push({x:px, y:py, r:hitR, dayNum:day.dayNum, lat:gps[0], lon:gps[1]});
+        }
+
+      } else if(ring.type === 'wxicon') {
+        // Single weather condition icon
+        const wx = cx + Math.cos(mid)*rMid;
+        const wy = cy + Math.sin(mid)*rMid;
+        drawIcon(ctx, val, wx, wy, iconSize*1.1, 0.95);
+
+      } else if(ring.type === 'terrain') {
+        // Single icon — primary terrain type for this day
+        const ix = cx + Math.cos(mid)*rMid;
+        const iy = cy + Math.sin(mid)*rMid;
+        drawIcon(ctx, typeof val === 'string' ? val : '🗺️', ix, iy, iconSize*1.1, 0.92);
+
+      } else if(ring.type === 'state') {
+        // Trance 🌀 + Mental Loop 🔁 + Pain ⚡ — show up to 3 icons
+        const { trance, loop, pain } = val;
+        const stateIcons = [];
+        if(trance) stateIcons.push('👁️');
+        if(loop)   stateIcons.push('🔁');
+        if(pain)   stateIcons.push('⚡');
+        const count = stateIcons.length;
+        if(count === 1) {
+          drawIcon(ctx, stateIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.92);
+        } else {
+          const off = spread * 0.28;
+          stateIcons.forEach((ic, k) => {
+            const a = mid - off*(count-1)/2 + k*off;
+            drawIcon(ctx, ic, cx+Math.cos(a)*rMid, cy+Math.sin(a)*rMid, iconSize*0.85, 0.90);
+          });
+        }
+
+      } else if(ring.type === 'encounters') {
+        // val = { humans, animStr }
+        const { humans, animStr } = val;
+        const allIcons = [];
+        if(humans) allIcons.push('👥');
+        if(animStr) {
+          animStr.split(/[;,]/).forEach(a => {
+            const k = a.trim().toLowerCase();
+            allIcons.push(D_ANIMAL_ICONS[k] || '🐾');
+          });
+        }
+        const count = allIcons.length;
+        if(count === 1) {
+          drawIcon(ctx, allIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.92);
+        } else {
+          const arcS = Math.min(spread, Math.abs(drawStart-drawEnd)*0.85);
+          allIcons.forEach((ic,k) => {
+            const t = count===1 ? 0.5 : k/(count-1);
+            const angle = mid - arcS*0.5 + t*arcS;
+            const rOff = rMid + (ringW*0.12)*(k%2===0?1:-1);
+            const sz = count > 4 ? iconSize*0.75 : iconSize*0.90;
+            drawIcon(ctx, ic, cx+Math.cos(angle)*rOff, cy+Math.sin(angle)*rOff, sz, 0.90);
+          });
+        }
+
+      } else if(ring.type==='bool') {
+        drawIcon(ctx, ring.icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize*0.95, 0.92);
+
+      } else if(ring.type === 'iconscale') {
+        const n = Math.max(1, Math.min(5, Math.round(val)));
+        const ix = cx + Math.cos(mid)*rMid;
+        const iy = cy + Math.sin(mid)*rMid;
+
+        if(ring.key === 'Solitude') {
+          // Single 🧍 icon, opacity encodes solitude level
+          const alpha = SOLITUDE_ALPHA[n-1];
+          drawIcon(ctx, '🧍', ix, iy, iconSize*1.05, alpha);
+
+        } else if(ring.key === 'Trolley') {
+          // Weight icon + small number label
+          const alpha = TROLLEY_ALPHA[n-1];
+          drawIcon(ctx, '🏋️', ix, iy, iconSize, alpha);
+          // Draw number alongside
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.font = `bold ${Math.max(7, ringW*0.32)}px 'JetBrains Mono', monospace`;
+          ctx.fillStyle = '#c4a068';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(n, ix + iconSize*0.55, iy + iconSize*0.1);
+          ctx.restore();
+
+        } else {
+          const levelMap = LEVEL_ICONS[ring.key];
+          const icon = levelMap ? levelMap[n-1] : ring.icon;
+          drawIcon(ctx, icon, ix, iy, iconSize*1.05, 0.93);
+        }
+
+      } else {
+        // pace — use level icons
+        const n = Math.max(1, Math.min(5, Math.round(val)));
+        const icon = LEVEL_ICONS['Pace'] ? LEVEL_ICONS['Pace'][n-1] : ring.icon;
+        drawIcon(ctx, icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.90);
+      }
+    });
+
+    // Day label — every day, outside the outer ring
+    {
+      const labelR = outerR + ringW * 0.9;
+      const lx = cx + Math.cos(mid)*labelR;
+      const ly = cy + Math.sin(mid)*labelR;
+      const isMajor = (dayIdx+1) % 5 === 0 || dayIdx === 0;
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(mid + Math.PI/2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if(isMajor) {
+        ctx.font = `bold ${Math.max(10, size*0.013)}px 'JetBrains Mono', monospace`;
+        ctx.fillStyle = 'rgba(70,50,30,0.92)';
+      } else {
+        ctx.font = `${Math.max(7, size*0.009)}px 'JetBrains Mono', monospace`;
+        ctx.fillStyle = 'rgba(120,100,75,0.50)';
+      }
+      ctx.fillText(String(dayIdx+1), 0, 0);
+      ctx.restore();
+    }
+  });
+
+  // Center — empty, same background color
+  ctx.beginPath();
+  ctx.arc(cx,cy,innerR,0,Math.PI*2);
+  ctx.fillStyle='#f2ede3';
+  ctx.fill();
+
+  // Outer ring border
+  ctx.beginPath();
+  ctx.arc(cx,cy,outerR+ringW*0.6,0,Math.PI*2);
+  ctx.strokeStyle='rgba(180,150,110,0.18)'; ctx.lineWidth=0.5; ctx.stroke();
+
+  // Reykjavík start marker at SW
+  const swX = cx + Math.cos(START_ANGLE)*(outerR + ringW*1.4);
+  const swY = cy + Math.sin(START_ANGLE)*(outerR + ringW*1.4);
+  ctx.save();
+  ctx.translate(swX, swY);
+  ctx.rotate(START_ANGLE + Math.PI/2);
+  ctx.fillStyle='rgba(138,122,104,0.7)';
+  ctx.font=`${Math.max(7,size*0.0095)}px JetBrains Mono`;
+  ctx.textAlign='center';
+  ctx.fillText('REYKJAVÍK', 0, 0);
+  ctx.restore();
+
+  // Tick at start
+  ctx.beginPath();
+  ctx.moveTo(cx+Math.cos(START_ANGLE)*outerR, cy+Math.sin(START_ANGLE)*outerR);
+  ctx.lineTo(cx+Math.cos(START_ANGLE)*(outerR+ringW), cy+Math.sin(START_ANGLE)*(outerR+ringW));
+  ctx.strokeStyle='rgba(138,122,104,0.5)'; ctx.lineWidth=0.8; ctx.stroke();
+}
+
+// ─────────────────────────────────────────────
+// PULSE ANIMATION for latest GPS
+// ─────────────────────────────────────────────
+function animateLatest() {
+  if(!latestGPSPos || !staticCanvas) { requestAnimationFrame(animateLatest); return; }
+  const {x,y} = latestGPSPos;
+  const canvas = document.getElementById('dial');
+  const ctx = canvas.getContext('2d');
+
+  pulsePhase = (pulsePhase + 0.035) % (Math.PI*2);
+  const pulse  = 0.5 + 0.5*Math.sin(pulsePhase);
+  const pulse2 = 0.5 + 0.5*Math.sin(pulsePhase + Math.PI); // offset second ring
+  const pad = 40;
+
+  // Restore static area
+  ctx.clearRect(x-pad, y-pad, pad*2, pad*2);
+  ctx.drawImage(staticCanvas, x-pad,y-pad,pad*2,pad*2, x-pad,y-pad,pad*2,pad*2);
+
+  // Outer pulse ring (slow, wide)
+  ctx.beginPath();
+  ctx.arc(x, y, 12 + pulse*16, 0, Math.PI*2);
+  ctx.strokeStyle = `rgba(192,96,80,${0.05 + 0.12*(1-pulse)})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Inner pulse ring (offset phase, tighter)
+  ctx.beginPath();
+  ctx.arc(x, y, 9 + pulse2*8, 0, Math.PI*2);
+  ctx.strokeStyle = `rgba(192,96,80,${0.10 + 0.18*(1-pulse2)})`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Core dot — larger
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI*2);
+  ctx.fillStyle = '#c06050';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(242,237,227,0.95)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Pin icon above — bigger
+  ctx.save();
+  ctx.globalAlpha = 0.95;
+  ctx.font = '18px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('📍', x, y-7);
+  ctx.restore();
+
+  requestAnimationFrame(animateLatest);
+}
+
+function captureStatic() {
+  staticCanvas = document.createElement('canvas');
+  const src = document.getElementById('dial');
+  staticCanvas.width=src.width; staticCanvas.height=src.height;
+  staticCanvas.getContext('2d').drawImage(src,0,0);
+}
+
+// ─────────────────────────────────────────────
+// TOOLTIP
+// ─────────────────────────────────────────────
+let tooltipEl = null;
+
+function createTooltip() {
+  tooltipEl = document.createElement('div');
+  tooltipEl.style.cssText = `
+    display:none; position:fixed; z-index:400;
+    background:#2a2118; color:#f2ede3;
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+    padding:5px 10px; border-radius:3px; pointer-events:none;
+    white-space:nowrap; letter-spacing:0.06em;
+    box-shadow:2px 3px 10px rgba(0,0,0,0.3);
+  `;
+  document.body.appendChild(tooltipEl);
+}
+
+function showTooltip(text, clientX, clientY) {
+  if(!tooltipEl) return;
+  tooltipEl.textContent = text;
+  tooltipEl.style.display = 'block';
+  let left = clientX + 12;
+  let top  = clientY - 28;
+  if(left + 300 > window.innerWidth - 4) left = clientX - 304;
+  if(top < 4) top = clientY + 12;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top  = top  + 'px';
+}
+
+function hideTooltip() {
+  if(tooltipEl) tooltipEl.style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// HIT DETECTION — ring + day under cursor
+// ─────────────────────────────────────────────
+// We need to know layout params at event time
+let layoutParams = null;
+
+function getLayoutParams(canvas) {
+  const size = canvas.width;
+  const cx = size/2, cy = size/2;
+  const innerR = size * 0.14;
+  const outerR = size * 0.46;
+  const ringW  = (outerR - innerR) / RINGS.length;
+  return { cx, cy, innerR, outerR, ringW, size };
+}
+
+function hitTestCanvas(mx, my, canvas, days) {
+  const {cx, cy, innerR, outerR, ringW} = getLayoutParams(canvas);
+  const dx = mx - cx, dy = my - cy;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+
+  if(dist < innerR || dist > outerR + ringW*2) return null;
+
+  // Which ring?
+  const ringIdx = Math.floor((dist - innerR) / ringW);
+  const ring = RINGS[ringIdx] || null;
+
+  // Which day? (counterclockwise)
+  let angle = Math.atan2(dy, dx);
+  // Normalize relative to START_ANGLE, counterclockwise
+  let relAngle = START_ANGLE - angle;
+  while(relAngle < 0) relAngle += Math.PI*2;
+  while(relAngle >= Math.PI*2) relAngle -= Math.PI*2;
+
+  const N = days.length;
+  const wedgeA = (Math.PI*2) / N;
+  const dayIdx = Math.floor(relAngle / wedgeA);
+  const day = (dayIdx >= 0 && dayIdx < N) ? days[dayIdx] : null;
+
+  return { ring, day, dayIdx, dist, ringIdx };
+}
+
+// ─────────────────────────────────────────────
+// ZOOM & PAN
+// ─────────────────────────────────────────────
+let zoomScale = 1;
+let zoomTx = 0, zoomTy = 0;
+let isPanning = false;
+let panStart = { x:0, y:0 };
+let panOrigin = { tx:0, ty:0 };
+const MIN_ZOOM = 0.3, MAX_ZOOM = 8;
+
+function applyZoom(canvas) {
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform = `translate(${zoomTx}px, ${zoomTy}px) scale(${zoomScale})`;
+}
+
+function zoomAt(clientX, clientY, factor, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+  const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomScale * factor));
+  const ratio = newScale / zoomScale;
+  zoomTx = mx - ratio * (mx - zoomTx);
+  zoomTy = my - ratio * (my - zoomTy);
+  zoomScale = newScale;
+  applyZoom(canvas);
+}
+
+function zoomBy(factor) {
+  const canvas = document.getElementById('dial');
+  const wrap = document.getElementById('diary-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, factor, canvas);
+}
+
+function resetZoom() {
+  zoomScale = 1; zoomTx = 0; zoomTy = 0;
+  applyZoom(document.getElementById('dial'));
+}
+
+// ─────────────────────────────────────────────
+// EVENTS
+// ─────────────────────────────────────────────
+function setupCanvasEvents(canvas, days) {
+  createTooltip();
+
+  canvas.addEventListener('mousemove', e => {
+    if(isPanning) return;
+    const wrap = document.getElementById('diary-canvas-wrap');
+    const wRect = wrap.getBoundingClientRect();
+
+    // Map screen coords → canvas pixel coords, undoing the CSS translate+scale transform
+    const localX = (e.clientX - wRect.left - zoomTx) / zoomScale;
+    const localY = (e.clientY - wRect.top  - zoomTy) / zoomScale;
+    // canvas.width is always the raw pixel size (no CSS scaling applied to canvas itself)
+    const mx = localX;
+    const my = localY;
+
+    const noteHit = noteHitAreas.find(h => {
+      const dx=mx-h.x, dy=my-h.y;
+      return Math.sqrt(dx*dx+dy*dy) <= h.r;
+    });
+    if(noteHit) {
+      canvas.style.cursor = 'pointer';
+      const popup = document.getElementById('dnp');
+      document.getElementById('dnpd').textContent = `Day ${noteHit.dayNum} · ${noteHit.date}`;
+      document.getElementById('dnpt').textContent = noteHit.note;
+      popup.classList.add('show');
+      const wrap = document.getElementById('diary-canvas-wrap');
+      const wRect = wrap.getBoundingClientRect();
+      const pw = 240;
+      let left = e.clientX - wRect.left + 14;
+      let top  = e.clientY - wRect.top  - 18;
+      if(left + pw > wrap.clientWidth - 8) left = e.clientX - wRect.left - pw - 14;
+      if(top + 120 > wrap.clientHeight - 8) top = wrap.clientHeight - 128;
+      if(top < 4) top = 4;
+      popup.style.left = left + 'px';
+      popup.style.top  = top  + 'px';
+      hideTooltip();
+      return;
+    }
+    document.getElementById('dnp').classList.remove('show');
+
+    const gpsHit = gpsHitAreas.find(h => {
+      const dx=mx-h.x, dy=my-h.y;
+      return Math.sqrt(dx*dx+dy*dy) <= h.r;
+    });
+    if(gpsHit) {
+      canvas.style.cursor = 'pointer';
+      showTooltip(`📍 Day ${gpsHit.dayNum} — open in Google Maps`, e.clientX, e.clientY);
+      return;
+    }
+
+    const hit = hitTestCanvas(mx, my, canvas, days);
+    if(hit && hit.ring && hit.day) {
+      canvas.style.cursor = 'default';
+      const val = dayValue(hit.day, hit.ring);
+      let label = hit.ring.label;
+      let valStr = '';
+      if(val !== null) {
+        if(hit.ring.type === 'iconscale' || hit.ring.type === 'pace') {
+          const n = Math.max(1, Math.min(5, Math.round(val)));
+          const levelMap = LEVEL_ICONS[hit.ring.key] || LEVEL_ICONS['Pace'];
+          const icon = levelMap ? levelMap[n-1] : '';
+          const VERBAL = {
+            Sleep_Quality: ['terrible sleep','poor sleep','okay sleep','good sleep','excellent sleep'],
+            Tiredness:     ['fresh','slightly tired','tired','very tired','exhausted'],
+            Cold:          ['sweating','comfortable','cold','very cold','freezing'],
+            Wind_Scale:    ['calm','light breeze','windy','very windy','storm force'],
+            Solitude:      ['surrounded by people','few people around','quiet','very alone','total solitude'],
+            Trolley:       ['very light load','light load','medium load','heavy load','crushing load'],
+            Pace:          ['very slow','slow','normal pace','fast','hype pace'],
+          };
+          if(hit.ring.key === 'Solitude') {
+            valStr = ` · 🧍 ${VERBAL.Solitude[n-1]}`;
+          } else if(hit.ring.key === 'Trolley') {
+            valStr = ` · 🏋️ ${n} — ${VERBAL.Trolley[n-1]}`;
+          } else {
+            const verbal = VERBAL[hit.ring.key];
+            valStr = ` · ${icon} ${n}/5 — ${verbal ? verbal[n-1] : ''}`;
+          }
+        } else if(hit.ring.type === 'wxicon') {
+          valStr = ` · ${val}`;
+        } else if(hit.ring.type === 'terrain') {
+          valStr = ` · ${val}`;
+        } else if(hit.ring.type === 'state') {
+          const parts = [];
+          if(val.trance) parts.push('👁️ Trance');
+          if(val.loop)   parts.push('🔁 Mind loop');
+          if(val.pain)   parts.push('⚡ Pain');
+          valStr = ' · ' + parts.join(', ');
+        } else if(hit.ring.type === 'encounters') {
+          const parts = [];
+          if(val.humans) parts.push('👥 humans');
+          if(val.animStr) parts.push(val.animStr);
+          valStr = ' · ' + parts.join(', ');
+        } else if(hit.ring.type === 'gps') {
+          valStr = ' · location recorded';
+        } else if(hit.ring.type === 'note') {
+          valStr = ' · has note';
+        } else {
+          valStr = ' · yes';
+        }
+      } else {
+        valStr = ' · not recorded';
+      }
+      showTooltip(`${hit.ring.icon} ${label}${valStr} · Day ${hit.day.dayNum}`, e.clientX, e.clientY);
+    } else {
+      canvas.style.cursor = isPanning ? 'grabbing' : 'grab';
+      hideTooltip();
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    document.getElementById('dnp').classList.remove('show');
+    hideTooltip();
+  });
+
+  canvas.addEventListener('click', e => {
+    if(isPanning) return;
+    const wrap = document.getElementById('diary-canvas-wrap');
+    const wRect = wrap.getBoundingClientRect();
+    const mx = (e.clientX - wRect.left - zoomTx) / zoomScale;
+    const my = (e.clientY - wRect.top  - zoomTy) / zoomScale;
+    const gpsHit = gpsHitAreas.find(h => {
+      const dx=mx-h.x, dy=my-h.y;
+      return Math.sqrt(dx*dx+dy*dy) <= h.r;
+    });
+    if(gpsHit && gpsHit.lat && gpsHit.lon) {
+      window.open(`https://maps.google.com/?q=${gpsHit.lat},${gpsHit.lon}`, '_blank');
+    }
+  });
+
+  canvas.addEventListener('mousedown', e => {
+    if(e.button !== 0) return;
+    isPanning = true;
+    panStart = { x: e.clientX, y: e.clientY };
+    panOrigin = { tx: zoomTx, ty: zoomTy };
+    document.getElementById('diary-canvas-wrap').classList.add('pan');
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', e => {
+    if(!isPanning) return;
+    zoomTx = panOrigin.tx + (e.clientX - panStart.x);
+    zoomTy = panOrigin.ty + (e.clientY - panStart.y);
+    applyZoom(canvas);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if(!isPanning) return;
+    isPanning = false;
+    document.getElementById('diary-canvas-wrap').classList.remove('pan');
+  });
+
+  let touchStartDist = null;
+  let touchStartScale = 1;
+  let touchStartMid = { x:0, y:0 };
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if(e.touches.length === 1) {
+      isPanning = true;
+      panStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      panOrigin = { tx: zoomTx, ty: zoomTy };
+    } else if(e.touches.length === 2) {
+      isPanning = false;
+      const t0 = e.touches[0], t1 = e.touches[1];
+      touchStartDist = Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY);
+      touchStartScale = zoomScale;
+      touchStartMid = { x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2 };
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if(e.touches.length === 1 && isPanning) {
+      zoomTx = panOrigin.tx + (e.touches[0].clientX - panStart.x);
+      zoomTy = panOrigin.ty + (e.touches[0].clientY - panStart.y);
+      applyZoom(canvas);
+    } else if(e.touches.length === 2 && touchStartDist) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX-t0.clientX, t1.clientY-t0.clientY);
+      const factor = dist / touchStartDist;
+      const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, touchStartScale * factor));
+      const ratio = newScale / zoomScale;
+      zoomTx = touchStartMid.x - ratio * (touchStartMid.x - zoomTx);
+      zoomTy = touchStartMid.y - ratio * (touchStartMid.y - zoomTy);
+      zoomScale = newScale;
+      applyZoom(canvas);
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => {
+    isPanning = false;
+    touchStartDist = null;
+  });
+
+  document.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.9, canvas);
+  }, { passive: false });
+
+  canvas.addEventListener('dblclick', resetZoom);
+}
+// ─────────────────────────────────────────────
+// LEGEND
+// ─────────────────────────────────────────────
+function buildLegend() {
+  const el=document.getElementById('diary-legend');
+  RINGS.forEach(ring=>{
+    const item=document.createElement('div');
+    item.className='dli';
+    item.innerHTML=`<span class="dlic">${ring.icon}</span><span style="color:${ring.color}">${ring.label}</span>`;
+    el.appendChild(item);
+  });
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+async function diaryInit() {
+  buildLegend();
+  let days=[];
+  try {
+    if(USE_DEMO) {
+      days=generateDemoData();
+      document.getElementById('diary-status').textContent=`DEMO · ${days.length} days · ${days.reduce((n,d)=>n+d.entries.length,0)} entries · Set USE_DEMO=false for live data`;
+    } else {
+      const res=await fetch(SHEET_URL+'&t='+Date.now());
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      days=groupByDay(d_parseCSV(await res.text()));
+      document.getElementById('diary-status').textContent=`${days.length} days recorded`;
+    }
+  } catch(e) {
+    document.getElementById('diary-status').textContent='⚠ '+e.message;
+  }
+
+  draw(days);
+  captureStatic();
+  setupCanvasEvents(document.getElementById('dial'), days);
+  requestAnimationFrame(animateLatest);
+  setTimeout(()=>document.getElementById('loading-screen').classList.add('gone'),650);
+
+  window.addEventListener('resize',()=>{ if(diaryActive){ draw(days); captureStatic(); } });
+}
+
+// diary init called by tab switcher
+
+
+// Expose diary zoom functions with d prefix to avoid conflicts with tracker
+function dZoomBy(f) { zoomBy(f); }
+function dResetZoom() { resetZoom(); }
+
+// Override diary DOM IDs to use diary-specific ones
+// (diary uses #cw, #dial, #legend, #status-line — remap them)
+
+
+// ── TRACKER SCRIPT ───────────────────────────────────────
+
+// ── CONFIG ─────────────────────────────────────────────
+let SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCXCLzZy5wWJRXZ0AxDVilpS6wbs89MNFw0hxtIyVi_8y6t5m-1qL9I24xqBks8G3JMNZY1B_sAoAX/pub?output=csv';
+let allEntries = [];
+let map, routeLine, markers = [];
+let refreshTimer = null;
+let dayColors = {};
+const COLOR_PALETTE = [
+  '#2d5a8e','#7a4f2d','#3a6e4a','#8e3a2d','#4a7fa5',
+  '#6b5a8e','#8e6b2d','#2d8e6b','#8e2d5a','#5a8e2d'
+];
+
+// ── INIT ───────────────────────────────────────────────
+function trackerInit() {
+  initMap();
+  loadData();
+  scheduleMidnightRefresh();
+}
+
+
+function scheduleMidnightRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0); // next midnight
+  const msUntilMidnight = midnight - now;
+  refreshTimer = setTimeout(() => {
+    loadData();
+    scheduleMidnightRefresh(); // reschedule for next midnight
+  }, msUntilMidnight);
+}
+function initMap() {
+  map = L.map('map', { zoomControl: true, attributionControl: false });
+  // Stamen Toner Lite — clean cartographic look
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CartoDB',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+  map.setView([64.9631, -19.0208], 6); // Iceland default
+}
+
+// ── LOAD DATA ──────────────────────────────────────────
+async function loadData() {
+  if (!SHEET_CSV_URL) return;
+  setLiveStatus('loading');
+  document.getElementById('loading-msg').textContent = 'Fetching latest entries…';
+
+  try {
+    // Add cache-buster to bypass CDN cache
+    const url = SHEET_CSV_URL + '&t=' + Date.now();
+
+    // 10 second timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+
+    if (!csv || csv.trim().length < 10) throw new Error('Empty response from sheet');
+
+    allEntries = parseCSV(csv);
+
+    if (!allEntries.length) {
+      // Sheet is published but has no data rows yet
+      setLiveStatus('ok');
+      document.getElementById('last-update').textContent = 'Sheet connected — no entries yet';
+      hideLoading('Sheet connected. No entries recorded yet.');
+      return;
+    }
+
+    render();
+    setLiveStatus('ok');
+    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+
+  } catch(e) {
+    setLiveStatus('error');
+    let msg = e.message;
+    if (e.name === 'AbortError') msg = 'Request timed out';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) msg = 'Network error — check sheet is published publicly';
+    document.getElementById('live-label').textContent = '⚠ ' + msg;
+    document.getElementById('loading-msg').textContent = '⚠ ' + msg + '. Click ↻ Refresh to try again.';
+  }
+
+  hideLoading();
+}
+
+// ── CSV PARSER ─────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    return obj;
+  }).filter(e => e.Timestamp || e.Date);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; continue; }
+    if (ch === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── COORDINATE HELPER ──────────────────────────────────
+// Handles both "52.5154663" and "52,5154663" (Italian locale)
+function toFloat(val) {
+  if (!val) return NaN;
+  return parseFloat(String(val).replace(',', '.'));
+}
+function hasCoords(e) {
+  return !isNaN(toFloat(e.Latitude)) && !isNaN(toFloat(e.Longitude));
+}
+function render() {
+  if (!allEntries.length) return;
+
+  // Group by date
+  const byDay = {};
+  allEntries.forEach(e => {
+    const day = e.Date || e.Timestamp?.split('T')[0] || 'Unknown';
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(e);
+  });
+
+  const days = Object.keys(byDay).sort();
+
+  // Assign colors per day
+  days.forEach((d, i) => { dayColors[d] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
+
+  // Stats — days and last location only
+  document.getElementById('stat-days').textContent = days.length;
+  const last = allEntries[allEntries.length - 1];
+  const locEl = document.getElementById('stat-last-loc');
+  if (last.Latitude && last.Longitude) {
+    const lat = toFloat(last.Latitude).toFixed(5);
+    const lon = toFloat(last.Longitude).toFixed(5);
+    locEl.innerHTML = `<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:13px">📍 View on map</a>`;
+  } else {
+    locEl.textContent = '—';
+  }
+
+  // Render map (async — draws routed lines progressively)
+  renderMap(byDay, days);
+
+  // Render log (sync — happens immediately)
+  renderLog(byDay, days);
+}
+
+// ── OSRM ROUTING ───────────────────────────────────────
+// Fetches a walking route between two points from OSRM public API
+// Returns array of [lat,lon] pairs, or null if routing fails
+async function fetchOSRMRoute(from, to) {
+  try {
+    // OSRM expects lon,lat order
+    const url = `https://router.project-osrm.org/route/v1/foot/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes?.length) return null;
+    // GeoJSON coords are [lon, lat] — flip to [lat, lon] for Leaflet
+    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+  } catch(e) {
+    return null; // timeout or network error → fallback to straight line
+  }
+}
+
+// ── MAP RENDER ─────────────────────────────────────────
+async function renderMap(byDay, days) {
+  // Clear old layers
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+  const allCoords = [];
+
+  // First pass — place all markers
+  days.forEach((day, dayIdx) => {
+    const entries = byDay[day];
+    const color = dayColors[day];
+
+    entries.forEach((e, entryIdx) => {
+      const lat = toFloat(e.Latitude);
+      const lon = toFloat(e.Longitude);
+      if (isNaN(lat) || isNaN(lon)) return;
+      allCoords.push([lat, lon]);
+
+      const isLatest = dayIdx === days.length - 1 && entryIdx === entries.length - 1;
+
+      let marker;
+      if (isLatest) {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="latest-marker"></div>`,
+          iconSize: [14, 14], iconAnchor: [7, 7]
+        });
+        marker = L.marker([lat, lon], { icon, zIndexOffset: 1000 });
+      } else {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="day-marker" style="background:${color}">${dayIdx + 1}</div>`,
+          iconSize: [28, 28], iconAnchor: [14, 14]
+        });
+        marker = L.marker([lat, lon], { icon });
+      }
+
+      const weather = e.Weather_Auto || e.Weather || '';
+      const temp = e.Temp_C ? `${e.Temp_C}°C` : '';
+      marker.bindPopup(`
+        <div class="popup-time">${e.Date || ''} · ${e.Time || ''}</div>
+        <div class="popup-title">${weather} ${temp}</div>
+        ${e.Terrain ? `<div class="popup-row">Terrain: <span>${e.Terrain}</span></div>` : ''}
+        ${e.Pace ? `<div class="popup-row">Pace: <span>${e.Pace}</span></div>` : ''}
+        ${e.Note ? `<div class="popup-row" style="font-style:italic;margin-top:6px">"${e.Note}"</div>` : ''}
+      `);
+      marker.on('click', () => openDetail(e));
+      marker.addTo(map);
+      markers.push(marker);
+    });
+  });
+
+  // Center on latest GPS point, fit all points in view
+  if (allCoords.length > 0) {
+    if (allCoords.length === 1) {
+      map.setView(allCoords[allCoords.length - 1], 13);
+    } else {
+      map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
+      // Then pan to latest point without changing zoom
+      setTimeout(() => map.panTo(allCoords[allCoords.length - 1]), 500);
+    }
+  }
+
+  // Second pass — draw routed lines between consecutive points, day by day
+  // Batch OSRM requests with small delay to avoid rate limiting
+  let straightCount = 0;
+  let routedCount = 0;
+
+  for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+    const day = days[dayIdx];
+    const entries = byDay[day];
+    const color = dayColors[day];
+
+    // Collect valid coords for this day
+    const dayCoords = entries
+      .map(e => {
+        const lat = toFloat(e.Latitude);
+        const lon = toFloat(e.Longitude);
+        return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
+      })
+      .filter(Boolean);
+
+    if (dayCoords.length < 2) continue;
+
+    // Route between each consecutive pair
+    for (let i = 0; i < dayCoords.length - 1; i++) {
+      const from = dayCoords[i];
+      const to = dayCoords[i + 1];
+
+      const routeCoords = await fetchOSRMRoute(from, to);
+
+      if (routeCoords && routeCoords.length > 1) {
+        // Routed path — solid line
+        const line = L.polyline(routeCoords, {
+          color, weight: 2.5, opacity: 0.8
+        }).addTo(map);
+        markers.push(line);
+        routedCount++;
+      } else {
+        // Fallback — straight dashed line with a small indicator
+        const line = L.polyline([from, to], {
+          color, weight: 2, opacity: 0.5, dashArray: '5 8'
+        }).addTo(map);
+        markers.push(line);
+        straightCount++;
+      }
+
+      // Small pause between requests to be polite to OSRM's public API
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
+
+  // Also connect last point of each day to first point of next day
+  for (let dayIdx = 0; dayIdx < days.length - 1; dayIdx++) {
+    const thisDay = byDay[days[dayIdx]];
+    const nextDay = byDay[days[dayIdx + 1]];
+    const lastOfDay = thisDay.map(e => {
+      const lat = toFloat(e.Latitude), lon = toFloat(e.Longitude);
+      return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
+    }).filter(Boolean).pop();
+    const firstOfNext = nextDay.map(e => {
+      const lat = toFloat(e.Latitude), lon = toFloat(e.Longitude);
+      return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
+    }).filter(Boolean)[0];
+    if (lastOfDay && firstOfNext) {
+      const routeCoords = await fetchOSRMRoute(lastOfDay, firstOfNext);
+      if (routeCoords && routeCoords.length > 1) {
+        L.polyline(routeCoords, { color: '#999', weight: 1.5, opacity: 0.4 }).addTo(map);
+      } else {
+        L.polyline([lastOfDay, firstOfNext], { color: '#999', weight: 1.5, opacity: 0.3, dashArray: '4 8' }).addTo(map);
+      }
+    }
+  }
+}
+
+// ── LOG RENDER ─────────────────────────────────────────
+function renderLog(byDay, days) {
+  const list = document.getElementById('log-list');
+  list.innerHTML = '';
+
+  // Reverse: most recent day first
+  [...days].reverse().forEach((day, di) => {
+    const entries = byDay[day];
+    const color = dayColors[day];
+    const dayNum = days.indexOf(day) + 1;
+    const lastEntry = entries[entries.length - 1];
+    const weatherSummary = lastEntry.Weather_Auto || lastEntry.Weather || '';
+
+    const group = document.createElement('div');
+    group.className = 'day-group';
+
+    const heading = document.createElement('div');
+    heading.className = 'day-heading';
+    heading.innerHTML = `
+      <div>
+        <div class="day-name" style="color:${color}">Day ${dayNum}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${formatDate(day)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="day-count" style="background:${color}">${entries.length}</span>
+        <div class="day-meta">
+          ${weatherSummary}<br>
+          ${lastEntry.Terrain || ''}
+        </div>
+      </div>`;
+
+    const entriesDiv = document.createElement('div');
+    entriesDiv.className = 'day-entries' + (di === 0 ? '' : ' collapsed');
+
+    heading.onclick = () => entriesDiv.classList.toggle('collapsed');
+    group.appendChild(heading);
+
+    // Entries — most recent first within day
+    [...entries].reverse().forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'entry';
+      el.onclick = () => openDetail(e);
+
+      const weatherIcon = getWeatherIcon(e.Weather_Auto || e.Weather || '');
+      const temp = e.Temp_C ? `${e.Temp_C}°C` : '';
+
+      // Build field tags
+      const fieldTags = buildFieldTags(e);
+
+      const lat = e.Latitude ? toFloat(e.Latitude).toFixed(5) : null;
+      const lon = e.Longitude ? toFloat(e.Longitude).toFixed(5) : null;
+      const locationHTML = lat ? `<div class="entry-gps"><a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);text-decoration:none">📍 View location</a></div>` : '';
+
+      // Wind comparison
+      const windCompHTML = (e.Wind_Scale && e.Wind_ms) ? `
+        <div class="comparison-block" style="margin-top:8px">
+          <div class="comparison-row forecasted">
+            <span class="comp-label">🌬 Forecasted</span>
+            <span class="comp-val">${e.Wind_ms} m/s</span>
+          </div>
+          <div class="comparison-row perceived">
+            <span class="comp-label">🧍 Perceived</span>
+            <span class="comp-val">${scaleLabel('Wind_Scale', e.Wind_Scale)}</span>
+          </div>
+        </div>` : '';
+
+      // Weather/temp comparison
+      const weatherCompHTML = (e.Weather && e.Weather_Auto) ? `
+        <div class="comparison-block" style="margin-top:6px">
+          <div class="comparison-row forecasted">
+            <span class="comp-label">📡 Forecasted</span>
+            <span class="comp-val">${e.Weather_Auto}${e.Feels_C ? ' · feels ' + e.Feels_C + '°C' : ''}</span>
+          </div>
+          <div class="comparison-row perceived">
+            <span class="comp-label">🧍 Perceived</span>
+            <span class="comp-val">${e.Weather}${e.Cold ? ' · Cold: ' + scaleLabel('Cold', e.Cold) : ''}</span>
+          </div>
+        </div>` : '';
+
+      el.innerHTML = `
+        <div class="entry-time">${e.Time || ''}</div>
+        <div class="entry-weather">${weatherIcon} ${e.Weather_Auto || e.Weather || '—'} ${temp}</div>
+        <div class="entry-fields">${fieldTags}</div>
+        ${windCompHTML}
+        ${weatherCompHTML}
+        ${e.Note ? `<div class="entry-note">${e.Note}</div>` : ''}
+        ${locationHTML}
+      `;
+      entriesDiv.appendChild(el);
+    });
+
+    group.appendChild(entriesDiv);
+    list.appendChild(group);
+  });
+}
+
+// Scale label maps — what numbers mean in human terms
+const SCALE_LABELS = {
+  Tiredness:     {1:'Fresh',      2:'Slightly tired', 3:'Tired',    4:'Very tired',   5:'Exhausted'},
+  Sleep_Quality: {1:'Terrible',   2:'Poor',           3:'Okay',     4:'Good',         5:'Excellent'},
+  Cold:          {1:'Warm',       2:'Cool',           3:'Cold',     4:'Very cold',    5:'Freezing'},
+  Solitude:      {1:'Surrounded', 2:'Few people',     3:'Quiet',    4:'Very alone',   5:'Total solitude'},
+  Trolley:       {1:'Very light', 2:'Light',          3:'Medium',   4:'Heavy',        5:'Very heavy'},
+  Wind_Scale:    {1:'Calm',       2:'Light breeze',   3:'Windy',    4:'Very windy',   5:'Storm force'},
+};
+
+// Icon per scale field
+const SCALE_ICONS = {
+  Tiredness:     '😴',
+  Sleep_Quality: '🌙',
+  Cold:          '🥶',
+  Solitude:      '🚶',
+  Trolley:       '🧳',
+  Wind_Scale:    '💨',
+};
+
+function renderScaleIcons(field, val) {
+  const n = parseInt(val);
+  if (isNaN(n)) return val;
+  const icon = SCALE_ICONS[field] || '●';
+  const label = SCALE_LABELS[field] && SCALE_LABELS[field][n] ? SCALE_LABELS[field][n] : `${n}/5`;
+  let html = `<span style="display:inline-flex;align-items:center;gap:3px">`;
+  for (let i = 1; i <= 5; i++) {
+    html += `<span class="scale-icon${i <= n ? ' on' : ''}">${icon}</span>`;
+  }
+  html += `<span style="margin-left:5px;font-size:11px;color:var(--muted)">${label}</span>`;
+  html += `</span>`;
+  return html;
+}
+
+function windBeaufort(ms) {
+  const v = parseFloat(ms);
+  if (isNaN(v)) return '';
+  if (v < 0.3) return 'Calm';
+  if (v < 1.6) return 'Light air';
+  if (v < 3.4) return 'Light breeze';
+  if (v < 5.5) return 'Gentle breeze';
+  if (v < 8.0) return 'Moderate breeze';
+  if (v < 10.8) return 'Fresh breeze';
+  if (v < 13.9) return 'Strong breeze';
+  if (v < 17.2) return 'Near gale';
+  if (v < 20.8) return 'Gale';
+  if (v < 24.5) return 'Severe gale';
+  if (v < 28.5) return 'Storm';
+  return 'Violent storm';
+}
+
+function scaleLabel(field, val) {
+  const n = parseInt(val);
+  if (isNaN(n)) return val;
+  const map = SCALE_LABELS[field];
+  if (map && map[n]) return map[n] + ` (${n}/5)`;
+  return `${n}/5`;
+}
+
+// Animal name → emoji map
+const ANIMAL_ICONS = {
+  'dog':'🐕','cat':'🐈','horse':'🐴','cow':'🐄','bird':'🐦','fox':'🦊','deer':'🦌',
+  'sheep':'🐑','pig':'🐖','rabbit':'🐇','whale':'🐳','seal':'🦭','puffin':'🐧',
+  'raven':'🐦‍⬛','eagle':'🦅','reindeer':'🦌','arctic fox':'🦊','mink':'🦦',
+};
+
+function animalDisplay(val) {
+  if (!val) return '';
+  return val.split(';').map(a => {
+    const key = a.trim().toLowerCase();
+    const icon = ANIMAL_ICONS[key];
+    return icon ? icon : a.trim();
+  }).join(' ');
+}
+
+function buildFieldTags(e) {
+  const skip = new Set(['Timestamp','Date','Time','Latitude','Longitude','GPS_Acc_m','Weather_Auto','Temp_C','Feels_C','Wind_ms','Precip_mm','Note','_synced','Weather']);
+  let html = '';
+  const fields = [
+    {k:'Tiredness',    label:'Tiredness',   scale:true,  yn:false},
+    {k:'Sleep_Quality',label:'Sleep',       scale:true,  yn:false},
+    {k:'Cold',         label:'Cold',        scale:true,  yn:false},
+    {k:'Wind_Scale',   label:'Wind',        scale:true,  yn:false},
+    {k:'Solitude',     label:'Solitude',    scale:true,  yn:false},
+    {k:'Trolley',      label:'Trolley',     scale:true,  yn:false},
+    {k:'Hunger',       label:'Hunger',      scale:false, yn:true},
+    {k:'Thirst',       label:'Thirst',      scale:false, yn:true},
+    {k:'Trance',       label:'Trance',      scale:false, yn:true},
+    {k:'Mental_Loop',  label:'Mental Loop', scale:false, yn:true},
+    {k:'Humans',       label:'Humans',      scale:false, yn:true},
+    {k:'Pace',         label:'Pace',        scale:false, yn:false},
+    {k:'Skin',         label:'Skin',        scale:false, yn:false},
+    {k:'Terrain',      label:'Terrain',     scale:false, yn:false},
+    {k:'Pain',         label:'Pain',        scale:false, yn:false},
+    {k:'Animals',      label:'Animals',     scale:false, yn:false, animal:true},
+    {k:'Camping_Plot', label:'Camp',        scale:false, yn:false},
+  ];
+
+  fields.forEach(({k, label, scale, yn, animal}) => {
+    const v = e[k];
+    if (!v) return;
+
+    // Skip "No" values for boolean fields
+    if (yn && v.toLowerCase() === 'no') return;
+
+    const isPain = k === 'Pain';
+    const cls = isPain ? 'field-tag pain-tag' : 'field-tag has-val';
+
+    if (scale && SCALE_ICONS[k] && !isNaN(parseInt(v))) {
+      const n = parseInt(v);
+      const icon = SCALE_ICONS[k];
+      const humanLabel = SCALE_LABELS[k] && SCALE_LABELS[k][n] ? SCALE_LABELS[k][n] : `${n}/5`;
+      let icons = '';
+      for (let i = 1; i <= 5; i++) {
+        icons += `<span style="opacity:${i<=n?'1':'0.15'}">${icon}</span>`;
+      }
+      html += `<span class="${cls}" style="display:inline-flex;align-items:center;gap:3px;padding:4px 8px" title="${label}: ${humanLabel}">${icons}<span style="margin-left:4px;font-size:9px">${label}</span></span>`;
+    } else if (yn && v.toLowerCase() === 'yes') {
+      // Just show label, no "Yes"
+      html += `<span class="${cls}">${label}</span>`;
+    } else if (animal) {
+      const display = animalDisplay(v);
+      html += `<span class="${cls}" title="${v}">${display}</span>`;
+    } else {
+      html += `<span class="${cls}">${label}: ${v}</span>`;
+    }
+  });
+
+  // Custom fields
+  Object.entries(e).forEach(([k,v]) => {
+    if (!v || skip.has(k) || fields.find(f=>f.k===k)) return;
+    if (v.toLowerCase() === 'no') return;
+    const display = v.toLowerCase() === 'yes' ? k.replace(/_/g,' ') : `${k.replace(/_/g,' ')}: ${v}`;
+    html += `<span class="field-tag has-val">${display}</span>`;
+  });
+
+  return html || '<span class="field-tag">no field data</span>';
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────
+function openDetail(e) {
+  const modal = document.getElementById('detail-modal');
+  const weatherIcon = getWeatherIcon(e.Weather_Auto || e.Weather || '');
+
+  document.getElementById('detail-title').textContent = `${weatherIcon} ${e.Weather_Auto || e.Weather || 'Entry'}`;
+  document.getElementById('detail-sub').textContent = `${e.Date || ''} · ${e.Time || ''} · ${e.Latitude ? toFloat(e.Latitude).toFixed(4)+', '+toFloat(e.Longitude).toFixed(4) : 'No GPS'}`;
+
+  const body = document.getElementById('detail-body');
+
+  // Build sections
+  const physical = [
+    ['Tiredness',     e.Tiredness,     true,  'Tiredness'],
+    ['Sleep Quality', e.Sleep_Quality, true,  'Sleep_Quality'],
+    ['Cold',          e.Cold,          true,  'Cold'],
+    ['Solitude',      e.Solitude,      true,  'Solitude'],
+    ['Trolley Weight',e.Trolley,       true,  'Trolley'],
+    ['Wind Scale',    e.Wind_Scale,    true,  'Wind_Scale'],
+    ['Hunger',        e.Hunger,        false, null],
+    ['Thirst',        e.Thirst,        false, null],
+    ['Trance',        e.Trance,        false, null],
+    ['Mental Loop',   e.Mental_Loop,   false, null],
+    ['Skin',          e.Skin,          false, null],
+    ['Pace',          e.Pace,          false, null],
+    ['Pain',          e.Pain,          false, null],
+  ].filter(([,v]) => v && v.toLowerCase() !== 'no')
+   .map(([l,v,s,k]) => [l, v.toLowerCase()==='yes' ? '✓' : v, s, k]);
+
+  const environment = [
+    ['Terrain',      e.Terrain],
+    ['Animals',      e.Animals ? animalDisplay(e.Animals) : null],
+    ['Humans',       e.Humans && e.Humans.toLowerCase() !== 'no' ? (e.Humans.toLowerCase()==='yes'?'✓':e.Humans) : null],
+    ['Camping Plot', e.Camping_Plot],
+    ['Weather',      e.Weather],
+  ].filter(([,v]) => v);
+
+  const weather = [
+    ['Condition', e.Weather_Auto],
+    ['Temperature', e.Temp_C ? e.Temp_C + '°C' : ''],
+    ['Feels like', e.Feels_C ? e.Feels_C + '°C' : ''],
+    ['Wind', e.Wind_ms ? e.Wind_ms + ' m/s' : ''],
+    ['Precip', e.Precip_mm ? e.Precip_mm + ' mm' : ''],
+  ].filter(([,v]) => v);
+
+  let html = '';
+
+  // Wind comparison
+  if (e.Wind_ms || e.Wind_Scale) {
+    html += `<div class="detail-section"><h3>Wind</h3>
+      <div class="detail-comparison">
+        ${e.Wind_ms ? `<div class="detail-comp-row forecasted"><span class="dc-label">📡 Forecasted</span><span class="dc-val">${e.Wind_ms} m/s${e.Wind_ms ? ' — ' + windBeaufort(e.Wind_ms) : ''}</span></div>` : ''}
+        ${e.Wind_Scale ? `<div class="detail-comp-row perceived"><span class="dc-label">🧍 Perceived</span><span class="dc-val">${scaleLabel('Wind_Scale', e.Wind_Scale)}</span></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Weather comparison
+  if (e.Weather_Auto || e.Weather || e.Temp_C) {
+    html += `<div class="detail-section"><h3>Weather</h3>
+      <div class="detail-comparison">
+        <div class="detail-comp-row forecasted">
+          <span class="dc-label">📡 Forecasted</span>
+          <span class="dc-val">${[e.Weather_Auto, e.Temp_C?e.Temp_C+'°C':'', e.Feels_C?'feels '+e.Feels_C+'°C':'', e.Precip_mm?e.Precip_mm+'mm precip':''].filter(Boolean).join(' · ')}</span>
+        </div>
+        ${e.Weather ? `<div class="detail-comp-row perceived"><span class="dc-label">🧍 Perceived</span><span class="dc-val">${e.Weather}${e.Cold?' · Cold: '+scaleLabel('Cold',e.Cold):''}</span></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  if (physical.length) {
+    html += `<div class="detail-section"><h3>Physical State</h3><div class="detail-grid">`;
+    physical.forEach(([l,v,isScale,key]) => html += detailRow(l,v,isScale,key));
+    html += `</div></div>`;
+  }
+
+  if (environment.length) {
+    html += `<div class="detail-section"><h3>Environment</h3><div class="detail-grid">`;
+    environment.forEach(([l,v]) => html += detailRow(l,v,false));
+    html += `</div></div>`;
+  }
+
+  // Custom fields
+  const knownKeys = new Set(['Timestamp','Date','Time','Latitude','Longitude','GPS_Acc_m','Weather_Auto','Temp_C','Feels_C','Wind_ms','Precip_mm','Note','_synced','Tiredness','Sleep_Quality','Cold','Solitude','Trolley','Wind_Scale','Hunger','Thirst','Trance','Mental_Loop','Skin','Pace','Pain','Terrain','Animals','Humans','Camping_Plot','Weather']);
+  const custom = Object.entries(e).filter(([k,v]) => v && !knownKeys.has(k));
+  if (custom.length) {
+    html += `<div class="detail-section"><h3>Custom Fields</h3><div class="detail-grid">`;
+    custom.forEach(([k,v]) => html += detailRow(k.replace(/_/g,' '),v,false));
+    html += `</div></div>`;
+  }
+
+  if (e.Note) {
+    html += `<div class="detail-section"><h3>Note</h3><div style="font-size:15px;font-style:italic;line-height:1.6;color:var(--ink)">${e.Note}</div></div>`;
+  }
+
+  if (e.Latitude && e.Longitude) {
+    const lat = toFloat(e.Latitude).toFixed(5);
+    const lon = toFloat(e.Longitude).toFixed(5);
+    html += `<div class="detail-section"><h3>Location</h3>
+      ${e.GPS_Acc_m ? `<div class="detail-row"><span class="d-label">Accuracy</span><span class="d-val">±${e.GPS_Acc_m}m</span></div>` : ''}
+      <div style="margin-top:10px"><a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);font-size:14px;font-family:var(--font-serif)">📍 Open this location in Google Maps →</a></div>
+    </div>`;
+  }
+
+  body.innerHTML = html;
+  modal.classList.add('open');
+
+  // Pan map to this entry
+  if (e.Latitude && e.Longitude) {
+    map.setView([toFloat(e.Latitude), toFloat(e.Longitude)], 14);
+  }
+}
+
+function detailRow(label, val, isScale, fieldKey) {
+  let valHTML = val || '—';
+  if (isScale && fieldKey && !isNaN(parseInt(val))) {
+    valHTML = renderScaleIcons(fieldKey, val);
+  }
+  return `<div class="detail-row"><span class="d-label">${label}</span><span class="d-val">${valHTML}</span></div>`;
+}
+
+function closeDetail(event) {
+  if (event.target === document.getElementById('detail-modal')) closeModal();
+}
+function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
+
+// ── HELPERS ────────────────────────────────────────────
+function getWeatherIcon(w) {
+  if (!w) return '🌡️';
+  const s = w.toLowerCase();
+  if (s.includes('sun') || s.includes('clear')) return '☀️';
+  if (s.includes('storm') || s.includes('thunder')) return '⛈️';
+  if (s.includes('snow')) return '❄️';
+  if (s.includes('rain') || s.includes('drizzle') || s.includes('shower')) return '🌧️';
+  if (s.includes('fog') || s.includes('mist')) return '🌫️';
+  if (s.includes('cloud') || s.includes('overcast')) return '☁️';
+  if (s.includes('partly')) return '⛅';
+  if (s.includes('wind')) return '🌬️';
+  return '🌤️';
+}
+
+function formatDate(dateStr) {
+  try {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      // DD/MM/YYYY
+      const d = new Date(parts[2], parts[1]-1, parts[0]);
+      return d.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    }
+    return new Date(dateStr).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+  } catch(e) { return dateStr; }
+}
+
+function setLiveStatus(s) {
+  const dot = document.getElementById('live-dot');
+  const lbl = document.getElementById('live-label');
+  if (s === 'ok') { dot.className = 'live-dot ok'; lbl.textContent = 'Live'; }
+  else if (s === 'loading') { dot.className = 'live-dot'; lbl.textContent = 'Loading…'; }
+  else { dot.className = 'live-dot'; lbl.textContent = 'Error'; }
+}
+
+function hideLoading(msg) {
+  const screen = document.getElementById('loading-screen');
+  if (msg) document.getElementById('loading-msg').textContent = msg;
+  setTimeout(() => screen.classList.add('gone'), 600);
+}
+
+// Safety net — always dismiss loading screen after 12 seconds no matter what
+setTimeout(() => {
+  document.getElementById('loading-screen').classList.add('gone');
+}, 12000);
+
+
+// ── INIT ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Start with diary view
+  diaryInited = true;
+  diaryInit();
+
+  // Dismiss loading after diary draws
+  setTimeout(() => {
+    document.getElementById('loading-screen').classList.add('gone');
+  }, 1200);
+});
+
+// Safety net
+setTimeout(() => {
+  document.getElementById('loading-screen').classList.add('gone');
+}, 8000);
+</script>
+</body>
+</html>
