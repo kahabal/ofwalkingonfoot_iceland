@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Of Walking on Foot — Iceland / v1.2</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Of Walking on Foot — Iceland / v.1.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -1487,7 +1490,10 @@ async function diaryInit() {
       sharedDemoDays = days; // share with tracker
       document.getElementById('diary-status').textContent=`DEMO · ${days.length} days · ${days.reduce((n,d)=>n+d.entries.length,0)} entries · Set USE_DEMO=false for live data`;
     } else {
-      const res=await fetch(SHEET_URL+'&t='+Date.now());
+      const res = await fetch(SHEET_URL + '&t=' + Date.now() + '&r=' + Math.random(), {
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       if(!res.ok) throw new Error('HTTP '+res.status);
       const entries = d_parseCSV(await res.text());
       days = groupByDay(entries);
@@ -1604,15 +1610,21 @@ async function loadData() {
   setLiveStatus('loading');
   document.getElementById('loading-msg').textContent = 'Fetching latest entries…';
 
-  try {
-    // Add cache-buster to bypass CDN cache
-    const url = SHEET_CSV_URL + '&t=' + Date.now();
+  // Always clear stale data before fetching
+  allEntries = [];
 
-    // 10 second timeout
+  try {
+    // Force bypass of all caches — unique timestamp + cache:no-store
+    const url = SHEET_CSV_URL + '&t=' + Date.now() + '&r=' + Math.random();
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
     clearTimeout(timeout);
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1623,10 +1635,16 @@ async function loadData() {
     allEntries = parseCSV(csv);
 
     if (!allEntries.length) {
-      // Sheet is published but has no data rows yet
+      // Clear any old markers from previous load
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      document.getElementById('log-list').innerHTML = '<div style="padding:24px 18px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">No entries in sheet yet.</div>';
+      document.getElementById('stat-days').textContent = '0';
+      document.getElementById('stat-last-loc').textContent = '—';
       setLiveStatus('ok');
       document.getElementById('last-update').textContent = 'Sheet connected — no entries yet';
-      hideLoading('Sheet connected. No entries recorded yet.');
+      hideLoading();
       return;
     }
 
