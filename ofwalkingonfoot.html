@@ -102,7 +102,7 @@ body::before {
 .tab-btn .tab-icon { font-size: 14px; margin-right: 7px; }
 
 /* ── VIEWS ── */
-#view-diary, #view-tracker { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+#view-diary, #view-tracker { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
 #view-diary.active, #view-tracker.active { display: flex; }
 
 /* ── DIARY VIEW ── */
@@ -135,6 +135,7 @@ body::before {
 #dtip { display: none; position: absolute; z-index: 50; background: #2a2118; color: #f2ede3; font-family: var(--font-mono); font-size: 11px; padding: 5px 10px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
 #dnp { display: none; position: absolute; z-index: 50; background: #f8f3e8; border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px; max-width: 230px; font-family: var(--font-serif); font-size: 14px; font-style: italic; line-height: 1.5; color: var(--ink); pointer-events: none; }
 #dnpd { font-family: var(--font-mono); font-size: 9px; color: var(--muted); font-style: normal; display: block; margin-bottom: 4px; letter-spacing: .07em; text-transform: uppercase; }
+#dnp.show { display: block; }
 #diary-status { font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding: 5px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 
 /* ── TRACKER VIEW ── */
@@ -154,49 +155,53 @@ body::before {
 .stat-cell:last-child { border-right: none; }
 .stat-num { font-size: 22px; font-weight: 300; color: var(--accent); display: block; line-height: 1; }
 .stat-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: 3px; display: block; }
-#tracker-layout { display: grid; grid-template-columns: 1fr 360px; flex: 1; overflow: hidden; }
+#tracker-layout { display: grid; grid-template-columns: 1fr 380px; flex: 1; overflow: hidden; min-height: 0; }
 @media (max-width: 900px) { #tracker-layout { grid-template-columns: 1fr; } }
-#map-col { position: relative; border-right: 1px solid var(--border); }
+#map-col { position: relative; border-right: 1px solid var(--border); overflow: hidden; }
 #map { width: 100%; height: 100%; }
 .leaflet-container { font-family: var(--font-serif); background: #e8e4d8; }
 .leaflet-popup-content-wrapper { background: var(--paper); border: 1px solid var(--border); border-radius: 4px; box-shadow: 4px 4px 0 rgba(0,0,0,.1); font-family: var(--font-serif); }
 .leaflet-popup-tip { background: var(--paper); }
 .leaflet-popup-content { margin: 10px 14px; min-width: 180px; }
-.popup-time { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-bottom: 4px; }
-.popup-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-.popup-row { font-size: 11px; color: var(--muted); }
+.popup-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.popup-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.popup-row { font-size: 12px; color: var(--muted); }
 .popup-row span { color: var(--ink); font-weight: 500; }
-.day-marker { width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: white; box-shadow: 0 2px 5px rgba(0,0,0,.3); }
+.day-marker { width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: white; box-shadow: 0 2px 5px rgba(0,0,0,.3); }
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
-#log-col { overflow-y: auto; }
+#log-col { overflow-y: scroll; height: 100%; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+#log-col::-webkit-scrollbar { width: 6px; }
+#log-col::-webkit-scrollbar-track { background: transparent; }
+#log-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+#log-col::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 #log-header { padding: 12px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--paper); z-index: 10; }
-#log-header h2 { font-size: 10px; font-weight: 400; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+#log-header h2 { font-size: 11px; font-weight: 400; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .day-group { border-bottom: 2px solid var(--border); }
-.day-heading { padding: 12px 18px 8px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: var(--paper2); border-bottom: 1px solid var(--border); cursor: pointer; }
+.day-heading { padding: 13px 18px 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: var(--paper2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
 .day-heading:hover { background: #e5e0d2; }
-.day-name { font-size: 16px; font-weight: 300; font-style: italic; }
-.day-meta { font-family: var(--font-mono); font-size: 9px; color: var(--muted); text-align: right; line-height: 1.5; }
-.day-count { background: var(--accent); color: white; font-family: var(--font-mono); font-size: 8px; padding: 1px 6px; border-radius: 8px; }
+.day-name { font-size: 19px; font-weight: 300; font-style: italic; }
+.day-meta { font-family: var(--font-mono); font-size: 10px; color: var(--muted); text-align: right; line-height: 1.6; }
+.day-count { background: var(--accent); color: white; font-family: var(--font-mono); font-size: 9px; padding: 2px 7px; border-radius: 8px; }
 .day-entries { display: block; }
 .day-entries.collapsed { display: none; }
-.entry { padding: 10px 18px; border-bottom: 1px solid #ddd8cc; cursor: pointer; transition: background .15s; }
+.entry { padding: 12px 18px; border-bottom: 1px solid #ddd8cc; cursor: pointer; transition: background .15s; }
 .entry:hover { background: #ede8dc; }
-.entry-time { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-bottom: 4px; }
-.entry-weather { font-size: 13px; margin-bottom: 5px; }
-.entry-fields { display: flex; flex-wrap: wrap; gap: 4px; }
-.field-tag { font-family: var(--font-mono); font-size: 8px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); }
+.entry-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+.entry-weather { font-size: 14px; margin-bottom: 6px; }
+.entry-fields { display: flex; flex-wrap: wrap; gap: 5px; }
+.field-tag { font-family: var(--font-mono); font-size: 10px; padding: 3px 7px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); }
 .field-tag.has-val { border-color: var(--accent); color: var(--accent); }
 .field-tag.pain-tag { border-color: var(--red); color: var(--red); }
-.entry-note { font-size: 12px; font-style: italic; color: var(--muted); margin-top: 5px; border-left: 2px solid var(--border); padding-left: 7px; }
-.entry-gps { font-family: var(--font-mono); font-size: 8px; color: #aaa; margin-top: 4px; }
-.comparison-block { margin-top: 7px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; font-size: 11px; }
-.comparison-row { display: grid; grid-template-columns: 80px 1fr; align-items: center; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.entry-note { font-size: 13px; font-style: italic; color: var(--muted); margin-top: 6px; border-left: 2px solid var(--border); padding-left: 8px; line-height: 1.5; }
+.entry-gps { font-family: var(--font-mono); font-size: 9px; color: #aaa; margin-top: 5px; }
+.comparison-block { margin-top: 8px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; font-size: 12px; }
+.comparison-row { display: grid; grid-template-columns: 90px 1fr; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); }
 .comparison-row:last-child { border-bottom: none; }
 .comparison-row.forecasted { background: rgba(45,90,142,.04); }
 .comparison-row.perceived  { background: rgba(122,79,45,.04); }
-.comp-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.comp-val { font-weight: 500; }
+.comp-label { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.comp-val { font-weight: 500; font-size: 12px; }
 #detail-modal { display: none; position: fixed; inset: 0; background: rgba(26,22,18,.7); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
 #detail-modal.open { display: flex; }
 #detail-box { background: var(--paper); border: 1px solid var(--border); border-radius: 4px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 6px 6px 0 rgba(0,0,0,.12); }
@@ -227,8 +232,10 @@ body::before {
 .loading-bar { width: 140px; height: 1px; background: var(--border); overflow: hidden; }
 .loading-fill { width: 60%; height: 100%; background: var(--ink); animation: lslide 1.4s ease-in-out infinite; }
 @keyframes lslide { 0%{transform:translateX(-100%)} 100%{transform:translateX(260%)} }
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 </style>
 </head>
 <body>
@@ -251,7 +258,7 @@ body::before {
       <span class="tab-icon">◉</span>Radial Diary
     </button>
     <button class="tab-btn" id="tab-tracker" onclick="switchTab('tracker')">
-      <span class="tab-icon">🗺</span>Expedition Tracker
+      <span class="tab-icon">🗺</span>Map Tracker
     </button>
   </div>
 </div>
@@ -333,6 +340,30 @@ function switchTab(tab) {
   if (!diaryActive && typeof map !== 'undefined' && map) {
     setTimeout(() => map.invalidateSize(), 50);
   }
+}
+
+// Open tracker tab and center map on a lat/lon, optionally showing a note popup
+function openInTracker(lat, lon, note, dayNum, date) {
+  switchTab('tracker');
+  if (typeof map === 'undefined' || !map) return;
+  const doIt = () => {
+    map.invalidateSize();
+    if (lat && lon) {
+      map.setView([lat, lon], 13);
+      // Open a popup at the location
+      const content = `
+        <div class="popup-time">Day ${dayNum} · ${date || ''}</div>
+        ${note ? `<div class="popup-row" style="font-style:italic;margin-top:4px">"${note}"</div>` : ''}
+        <div style="margin-top:6px"><a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);font-size:11px">Open in Google Maps →</a></div>
+      `;
+      L.popup({ closeButton: true, maxWidth: 280 })
+        .setLatLng([lat, lon])
+        .setContent(content)
+        .openOn(map);
+    }
+  };
+  // If tracker just initialised, wait for it
+  setTimeout(doIt, trackerInited ? 80 : 800);
 }
 
 // ── DIARY SCRIPT ────────────────────────────────────────
@@ -502,8 +533,8 @@ function generateDemoData() {
     const wpT = (t * wpCount) - wpIdx;
     const wp0 = gpsWaypoints[Math.min(wpIdx, wpCount)];
     const wp1 = gpsWaypoints[Math.min(wpIdx + 1, wpCount)];
-    const lat = wp0[0] + (wp1[0] - wp0[0]) * wpT + (Math.random() - 0.5) * 0.04;
-    const lon = wp0[1] + (wp1[1] - wp0[1]) * wpT + (Math.random() - 0.5) * 0.06;
+    const lat = wp0[0] + (wp1[0] - wp0[0]) * wpT + (Math.random() - 0.5) * 0.008;
+    const lon = wp0[1] + (wp1[1] - wp0[1]) * wpT + (Math.random() - 0.5) * 0.012;
 
     // Terrain phase
     const phase = Math.floor(d / totalDays * terrainsByPhase.length);
@@ -856,7 +887,8 @@ function draw(days) {
         ctx.fillStyle = hexToRgba(ring.color, 0.85);
         ctx.fill();
         const note = dayNote(day);
-        if(note) noteHitAreas.push({x:nx, y:ny, r:btnR+5, dayNum:day.dayNum, note, date:day.date});
+        const gps = dayFirstGPS(day);
+        if(note) noteHitAreas.push({x:nx, y:ny, r:btnR+5, dayNum:day.dayNum, note, date:day.date, lat:gps?gps[0]:null, lon:gps?gps[1]:null});
         ctx.save();
         ctx.font=`${Math.max(5,ringW*0.3)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1249,7 +1281,7 @@ function setupCanvasEvents(canvas, days) {
     });
     if(gpsHit) {
       canvas.style.cursor = 'pointer';
-      showTooltip(`📍 Day ${gpsHit.dayNum} — open in Google Maps`, e.clientX, e.clientY);
+      showTooltip(`📍 Day ${gpsHit.dayNum} — click to open in map`, e.clientX, e.clientY);
       return;
     }
 
@@ -1324,12 +1356,24 @@ function setupCanvasEvents(canvas, days) {
     const wRect = wrap.getBoundingClientRect();
     const mx = (e.clientX - wRect.left - zoomTx) / zoomScale;
     const my = (e.clientY - wRect.top  - zoomTy) / zoomScale;
+
+    // Note click → open tracker centered on that day's GPS with note
+    const noteHitClick = noteHitAreas.find(h => {
+      const dx=mx-h.x, dy=my-h.y;
+      return Math.sqrt(dx*dx+dy*dy) <= h.r;
+    });
+    if(noteHitClick) {
+      openInTracker(noteHitClick.lat, noteHitClick.lon, noteHitClick.note, noteHitClick.dayNum, noteHitClick.date);
+      return;
+    }
+
+    // GPS click → open tracker centered on that pin
     const gpsHit = gpsHitAreas.find(h => {
       const dx=mx-h.x, dy=my-h.y;
       return Math.sqrt(dx*dx+dy*dy) <= h.r;
     });
     if(gpsHit && gpsHit.lat && gpsHit.lon) {
-      window.open(`https://maps.google.com/?q=${gpsHit.lat},${gpsHit.lon}`, '_blank');
+      openInTracker(gpsHit.lat, gpsHit.lon, null, gpsHit.dayNum, null);
     }
   });
 
@@ -1421,12 +1465,15 @@ function buildLegend() {
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
+let sharedDemoDays = null; // shared between diary and tracker
+
 async function diaryInit() {
   buildLegend();
   let days=[];
   try {
     if(USE_DEMO) {
       days=generateDemoData();
+      sharedDemoDays = days; // share with tracker
       document.getElementById('diary-status').textContent=`DEMO · ${days.length} days · ${days.reduce((n,d)=>n+d.entries.length,0)} entries · Set USE_DEMO=false for live data`;
     } else {
       const res=await fetch(SHEET_URL+'&t='+Date.now());
@@ -1474,8 +1521,45 @@ const COLOR_PALETTE = [
 // ── INIT ───────────────────────────────────────────────
 function trackerInit() {
   initMap();
-  loadData();
-  scheduleMidnightRefresh();
+  if (USE_DEMO) {
+    loadDemoIntoTracker();
+  } else {
+    loadData();
+    scheduleMidnightRefresh();
+  }
+}
+
+// Convert diary demo days → flat allEntries for tracker
+function loadDemoIntoTracker() {
+  const days = sharedDemoDays || generateDemoData();
+  allEntries = [];
+  const weatherTemps = {'Sun':14,'Partly Cloudy':10,'Cloud':8,'Rain':7,'Wind':6,'Storm':5,'Fog':6,'Snow':1};
+  const windSpeeds = {1:1,2:4,3:8,4:14,5:20};
+
+  days.forEach(day => {
+    day.entries.forEach(e => {
+      const wx = e.Weather || 'Partly Cloudy';
+      const windN = parseInt(e.Wind_Scale) || 2;
+      const tempC = (weatherTemps[wx] || 8) + Math.round((Math.random()-0.5)*4);
+      allEntries.push({
+        ...e,
+        Date: day.date,
+        Time: '09:00',
+        Timestamp: day.date,
+        Weather_Auto: wx + ` ${tempC}°C`,
+        Temp_C: String(tempC),
+        Feels_C: String(tempC - 3),
+        Wind_ms: String(windSpeeds[windN] || 6),
+        Precip_mm: wx==='Rain'||wx==='Storm' ? String(Math.round(Math.random()*8)) : '0',
+      });
+    });
+  });
+
+  if (!allEntries.length) return;
+  render();
+  setLiveStatus('ok');
+  document.getElementById('last-update').textContent = `DEMO · ${days.length} days`;
+  hideLoading();
 }
 
 
@@ -1594,7 +1678,24 @@ function render() {
     byDay[day].push(e);
   });
 
-  const days = Object.keys(byDay).sort();
+  // Sort days by the actual dayNum stored in entries (not lexicographic string sort)
+  // This handles DD/MM/YYYY format which sorts wrong alphabetically
+  const days = Object.keys(byDay).sort((a, b) => {
+    const numA = parseInt(byDay[a][0]?.dayNum) || 0;
+    const numB = parseInt(byDay[b][0]?.dayNum) || 0;
+    if (numA && numB) return numA - numB;
+    // Fallback: parse DD/MM/YYYY
+    const parseDate = s => { const p = s.split('/'); return p.length===3 ? new Date(p[2],p[1]-1,p[0]) : new Date(s); };
+    return parseDate(a) - parseDate(b);
+  });
+
+  // Build a dayNum lookup: date string → sequential number (1-based)
+  const dayNumMap = {};
+  days.forEach((d, i) => {
+    // Use stored dayNum if available, else sequential index
+    const storedNum = parseInt(byDay[d][0]?.dayNum);
+    dayNumMap[d] = storedNum || (i + 1);
+  });
 
   // Assign colors per day
   days.forEach((d, i) => { dayColors[d] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
@@ -1611,11 +1712,9 @@ function render() {
     locEl.textContent = '—';
   }
 
-  // Render map (async — draws routed lines progressively)
-  renderMap(byDay, days);
-
-  // Render log (sync — happens immediately)
-  renderLog(byDay, days);
+  // Render map and log, passing dayNumMap so markers show correct numbers
+  renderMap(byDay, days, dayNumMap);
+  renderLog(byDay, days, dayNumMap);
 }
 
 // ── OSRM ROUTING ───────────────────────────────────────
@@ -1637,7 +1736,7 @@ async function fetchOSRMRoute(from, to) {
 }
 
 // ── MAP RENDER ─────────────────────────────────────────
-async function renderMap(byDay, days) {
+async function renderMap(byDay, days, dayNumMap) {
   // Clear old layers
   markers.forEach(m => map.removeLayer(m));
   markers = [];
@@ -1645,7 +1744,45 @@ async function renderMap(byDay, days) {
 
   const allCoords = [];
 
-  // First pass — place all markers
+  // Collect all coords in order, keyed to their day
+  const dayCoordMap = {};
+  days.forEach((day, dayIdx) => {
+    const entries = byDay[day];
+    const coords = entries.map(e => {
+      const lat = toFloat(e.Latitude), lon = toFloat(e.Longitude);
+      return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
+    }).filter(Boolean);
+    dayCoordMap[day] = coords;
+    coords.forEach(c => allCoords.push(c));
+  });
+
+  // Draw one continuous line through the whole route, coloured per day segment
+  days.forEach((day, dayIdx) => {
+    const color = dayColors[day];
+    const coords = dayCoordMap[day];
+    if (!coords.length) return;
+
+    // Connect previous day's last point to this day's first point (overnight walk line)
+    if (dayIdx > 0) {
+      const prevCoords = dayCoordMap[days[dayIdx - 1]];
+      if (prevCoords && prevCoords.length) {
+        const line = L.polyline([prevCoords[prevCoords.length - 1], coords[0]], {
+          color: color, weight: 1.5, opacity: 0.35, dashArray: '5 7'
+        }).addTo(map);
+        markers.push(line);
+      }
+    }
+
+    // Within-day segments (solid, colour = day colour)
+    if (coords.length >= 2) {
+      const line = L.polyline(coords, {
+        color: color, weight: 2.5, opacity: 0.75
+      }).addTo(map);
+      markers.push(line);
+    }
+  });
+
+  // Place markers on top of lines
   days.forEach((day, dayIdx) => {
     const entries = byDay[day];
     const color = dayColors[day];
@@ -1654,7 +1791,6 @@ async function renderMap(byDay, days) {
       const lat = toFloat(e.Latitude);
       const lon = toFloat(e.Longitude);
       if (isNaN(lat) || isNaN(lon)) return;
-      allCoords.push([lat, lon]);
 
       const isLatest = dayIdx === days.length - 1 && entryIdx === entries.length - 1;
 
@@ -1669,7 +1805,7 @@ async function renderMap(byDay, days) {
       } else {
         const icon = L.divIcon({
           className: '',
-          html: `<div class="day-marker" style="background:${color}">${dayIdx + 1}</div>`,
+          html: `<div class="day-marker" style="background:${color}">${dayNumMap ? dayNumMap[day] : dayIdx + 1}</div>`,
           iconSize: [28, 28], iconAnchor: [14, 14]
         });
         marker = L.marker([lat, lon], { icon });
@@ -1690,99 +1826,26 @@ async function renderMap(byDay, days) {
     });
   });
 
-  // Center on latest GPS point, fit all points in view
+  // Fit map to all coords
   if (allCoords.length > 0) {
     if (allCoords.length === 1) {
-      map.setView(allCoords[allCoords.length - 1], 13);
+      map.setView(allCoords[0], 13);
     } else {
       map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
-      // Then pan to latest point without changing zoom
       setTimeout(() => map.panTo(allCoords[allCoords.length - 1]), 500);
-    }
-  }
-
-  // Second pass — draw routed lines between consecutive points, day by day
-  // Batch OSRM requests with small delay to avoid rate limiting
-  let straightCount = 0;
-  let routedCount = 0;
-
-  for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
-    const day = days[dayIdx];
-    const entries = byDay[day];
-    const color = dayColors[day];
-
-    // Collect valid coords for this day
-    const dayCoords = entries
-      .map(e => {
-        const lat = toFloat(e.Latitude);
-        const lon = toFloat(e.Longitude);
-        return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
-      })
-      .filter(Boolean);
-
-    if (dayCoords.length < 2) continue;
-
-    // Route between each consecutive pair
-    for (let i = 0; i < dayCoords.length - 1; i++) {
-      const from = dayCoords[i];
-      const to = dayCoords[i + 1];
-
-      const routeCoords = await fetchOSRMRoute(from, to);
-
-      if (routeCoords && routeCoords.length > 1) {
-        // Routed path — solid line
-        const line = L.polyline(routeCoords, {
-          color, weight: 2.5, opacity: 0.8
-        }).addTo(map);
-        markers.push(line);
-        routedCount++;
-      } else {
-        // Fallback — straight dashed line with a small indicator
-        const line = L.polyline([from, to], {
-          color, weight: 2, opacity: 0.5, dashArray: '5 8'
-        }).addTo(map);
-        markers.push(line);
-        straightCount++;
-      }
-
-      // Small pause between requests to be polite to OSRM's public API
-      await new Promise(r => setTimeout(r, 100));
-    }
-  }
-
-  // Also connect last point of each day to first point of next day
-  for (let dayIdx = 0; dayIdx < days.length - 1; dayIdx++) {
-    const thisDay = byDay[days[dayIdx]];
-    const nextDay = byDay[days[dayIdx + 1]];
-    const lastOfDay = thisDay.map(e => {
-      const lat = toFloat(e.Latitude), lon = toFloat(e.Longitude);
-      return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
-    }).filter(Boolean).pop();
-    const firstOfNext = nextDay.map(e => {
-      const lat = toFloat(e.Latitude), lon = toFloat(e.Longitude);
-      return isNaN(lat) || isNaN(lon) ? null : [lat, lon];
-    }).filter(Boolean)[0];
-    if (lastOfDay && firstOfNext) {
-      const routeCoords = await fetchOSRMRoute(lastOfDay, firstOfNext);
-      if (routeCoords && routeCoords.length > 1) {
-        L.polyline(routeCoords, { color: '#999', weight: 1.5, opacity: 0.4 }).addTo(map);
-      } else {
-        L.polyline([lastOfDay, firstOfNext], { color: '#999', weight: 1.5, opacity: 0.3, dashArray: '4 8' }).addTo(map);
-      }
     }
   }
 }
 
 // ── LOG RENDER ─────────────────────────────────────────
-function renderLog(byDay, days) {
+function renderLog(byDay, days, dayNumMap) {
   const list = document.getElementById('log-list');
   list.innerHTML = '';
 
-  // Reverse: most recent day first
   [...days].reverse().forEach((day, di) => {
     const entries = byDay[day];
     const color = dayColors[day];
-    const dayNum = days.indexOf(day) + 1;
+    const dayNum = dayNumMap ? dayNumMap[day] : (days.indexOf(day) + 1);
     const lastEntry = entries[entries.length - 1];
     const weatherSummary = lastEntry.Weather_Auto || lastEntry.Weather || '';
 
