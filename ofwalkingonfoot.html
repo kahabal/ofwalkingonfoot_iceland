@@ -985,17 +985,14 @@ function draw(days) {
         const iy = cy + Math.sin(mid)*rMid;
 
         if(ring.key === 'Solitude') {
-          // Single 🧍 icon, opacity encodes solitude level
-          const alpha = SOLITUDE_ALPHA[n-1];
-          drawIcon(ctx, '🧍', ix, iy, iconSize*1.05, alpha);
+          // Use icon per level, full opacity — no opacity encoding which hides data
+          const soloIcons = ['🌍','👥','🚶','🏔️','🌌'];
+          drawIcon(ctx, soloIcons[n-1] || '🚶', ix, iy, iconSize*1.05, 0.92);
 
         } else if(ring.key === 'Trolley') {
-          // Weight icon + small number label
-          const alpha = TROLLEY_ALPHA[n-1];
-          drawIcon(ctx, '🏋️', ix, iy, iconSize, alpha);
-          // Draw number alongside
+          drawIcon(ctx, '🏋️', ix, iy, iconSize, 0.92);
           ctx.save();
-          ctx.globalAlpha = alpha;
+          ctx.globalAlpha = 0.92;
           ctx.font = `bold ${Math.max(7, ringW*0.32)}px 'JetBrains Mono', monospace`;
           ctx.fillStyle = '#c4a068';
           ctx.textAlign = 'left';
