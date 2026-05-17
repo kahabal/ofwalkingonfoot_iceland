@@ -627,21 +627,24 @@ function d_toFloat(v){ return parseFloat(String(v||'').replace(',','.')); }
 function d_parseCSV(text) {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
-  const headers = d_parseCSVLine(lines[0]);
+  // Auto-detect separator: semicolon or comma
+  const firstLine = lines[0];
+  const sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+  const headers = d_parseCSVLine(lines[0], sep);
   return lines.slice(1).map(line => {
-    const vals = d_parseCSVLine(line);
+    const vals = d_parseCSVLine(line, sep);
     const obj = {};
     headers.forEach((h,i) => obj[h.trim()] = (vals[i]||'').trim());
     return obj;
   }).filter(e => e.Timestamp || e.Date);
 }
 
-function d_parseCSVLine(line) {
+function d_parseCSVLine(line, sep=',') {
   const result=[]; let cur='', inQ=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
     if(ch==='"'){inQ=!inQ;continue;}
-    if(ch===','&&!inQ){result.push(cur);cur='';continue;}
+    if(ch===sep&&!inQ){result.push(cur);cur='';continue;}
     cur+=ch;
   }
   result.push(cur);
@@ -651,11 +654,20 @@ function d_parseCSVLine(line) {
 function groupByDay(entries) {
   const byDay={};
   entries.forEach(e=>{
-    const day=e.Date||(e.Timestamp||'').split('T')[0]||'Unknown';
+    // Handle both DD/MM/YYYY and ISO YYYY-MM-DD date formats
+    let day = e.Date || (e.Timestamp||'').split('T')[0] || 'Unknown';
     if(!byDay[day]) byDay[day]=[];
     byDay[day].push(e);
   });
-  return Object.keys(byDay).sort().map((d,i)=>({date:d, dayNum:i+1, entries:byDay[d]}));
+  // Sort by parsing the actual date, handling DD/MM/YYYY format
+  const parseDate = s => {
+    const p = s.split('/');
+    if(p.length===3) return new Date(p[2], p[1]-1, p[0]); // DD/MM/YYYY
+    return new Date(s); // ISO or other
+  };
+  return Object.keys(byDay)
+    .sort((a,b) => parseDate(a) - parseDate(b))
+    .map((d,i) => ({date:d, dayNum:i+1, entries:byDay[d]}));
 }
 
 // Returns numeric value 0-5, or null if not recorded
@@ -1478,8 +1490,11 @@ async function diaryInit() {
     } else {
       const res=await fetch(SHEET_URL+'&t='+Date.now());
       if(!res.ok) throw new Error('HTTP '+res.status);
-      days=groupByDay(d_parseCSV(await res.text()));
-      document.getElementById('diary-status').textContent=`${days.length} days recorded`;
+      const entries = d_parseCSV(await res.text());
+      days = groupByDay(entries);
+      const sample = entries[0] ? Object.keys(entries[0]).slice(0,5).join(', ') : 'none';
+      document.getElementById('diary-status').textContent =
+        `${days.length} days · ${entries.length} entries · fields: ${sample}`;
     }
   } catch(e) {
     document.getElementById('diary-status').textContent='⚠ '+e.message;
