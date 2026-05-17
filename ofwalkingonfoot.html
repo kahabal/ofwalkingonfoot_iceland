@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Of Walking on Foot — Iceland / v1.1</title>
+<title>Of Walking on Foot — Iceland / v1.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -779,10 +779,16 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-// Render a single emoji/text icon centered at (x,y) with given size and alpha
+// Render a single emoji/text icon centered at (x,y) with given size
+// Draws a subtle background circle so icons are visible on any background
 function drawIcon(ctx, icon, x, y, size, alpha=1) {
   ctx.save();
   ctx.globalAlpha = alpha;
+  // Small background circle for contrast
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.62, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(242, 237, 227, 0.7)';
+  ctx.fill();
   ctx.font = `${size}px serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -883,7 +889,7 @@ function draw(days) {
       if(val === null) return; // no data — skip icons
 
       // ── ICON RENDERING ──
-      const iconSize = Math.max(9, Math.min(ringW * 0.68, 20));
+      const iconSize = Math.max(14, Math.min(ringW * 0.80, 26));
       const spread   = Math.abs(drawStart - drawEnd) * 0.72;
 
       if(ring.type === 'note') {
