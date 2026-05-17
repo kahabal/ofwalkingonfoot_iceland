@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Of Walking on Foot — Iceland</title>
+<title>Of Walking on Foot — Iceland / v1.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -409,10 +409,6 @@ const LEVEL_ICONS = {
   Pace:          ['🐢','🚶','🏃','😵','⚡'],
 };
 
-// Trolley opacity per level (light=faint, heavy=bold)
-const TROLLEY_ALPHA = [0.35, 0.55, 0.72, 0.88, 1.0];
-// Solitude opacity per level (1=barely alone=faint, 5=total solitude=strong)
-const SOLITUDE_ALPHA = [0.15, 0.30, 0.50, 0.72, 0.95];
 
 const PACE_SCALE   = {'Low':1,'Medium':2,'High':3,'Suffering':4,'Hype':5};
 
@@ -871,7 +867,7 @@ function draw(days) {
         ctx.arc(cx,cy,rOuter-0.5, drawEnd, drawStart);
         ctx.arc(cx,cy,rInner+0.5, drawStart, drawEnd, true);
         ctx.closePath();
-        ctx.fillStyle = hexToRgba(ring.color, 0.10);
+        ctx.fillStyle = hexToRgba(ring.color, 0.12);
         ctx.fill();
       }
 
@@ -879,7 +875,7 @@ function draw(days) {
       if(val !== null) {
         ctx.beginPath();
         ctx.arc(cx,cy,rOuter-1,drawEnd,drawStart);
-        ctx.strokeStyle=hexToRgba(ring.color, ring.type==='gps' ? 0.30 : 0.18);
+        ctx.strokeStyle=hexToRgba(ring.color, ring.type==='gps' ? 0.50 : 0.30);
         ctx.lineWidth=0.4;
         ctx.stroke();
       }
@@ -896,7 +892,7 @@ function draw(days) {
         const btnR = Math.max(3, ringW*0.28);
         ctx.beginPath();
         ctx.arc(nx,ny,btnR,0,Math.PI*2);
-        ctx.fillStyle = hexToRgba(ring.color, 0.85);
+        ctx.fillStyle = hexToRgba(ring.color, 1.0);
         ctx.fill();
         const note = dayNote(day);
         const gps = dayFirstGPS(day);
@@ -904,7 +900,7 @@ function draw(days) {
         ctx.save();
         ctx.font=`${Math.max(5,ringW*0.3)}px serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.globalAlpha=0.9; ctx.fillStyle='#f2ede3';
+        ctx.globalAlpha=1.0; ctx.fillStyle='#f2ede3';
         ctx.fillText('✎',nx,ny+0.5);
         ctx.restore();
 
@@ -917,7 +913,7 @@ function draw(days) {
           latestGPSPos = {x:px, y:py, gps};
           if(gps) gpsHitAreas.push({x:px, y:py, r:hitR+4, dayNum:day.dayNum, lat:gps[0], lon:gps[1]});
         } else {
-          drawIcon(ctx, '📍', px, py, iconSize*1.2, 0.92);
+          drawIcon(ctx, '📍', px, py, iconSize*1.2, 1);
           if(gps) gpsHitAreas.push({x:px, y:py, r:hitR, dayNum:day.dayNum, lat:gps[0], lon:gps[1]});
         }
 
@@ -925,13 +921,13 @@ function draw(days) {
         // Single weather condition icon
         const wx = cx + Math.cos(mid)*rMid;
         const wy = cy + Math.sin(mid)*rMid;
-        drawIcon(ctx, val, wx, wy, iconSize*1.1, 0.95);
+        drawIcon(ctx, val, wx, wy, iconSize*1.1, 1);
 
       } else if(ring.type === 'terrain') {
         // Single icon — primary terrain type for this day
         const ix = cx + Math.cos(mid)*rMid;
         const iy = cy + Math.sin(mid)*rMid;
-        drawIcon(ctx, typeof val === 'string' ? val : '🗺️', ix, iy, iconSize*1.1, 0.92);
+        drawIcon(ctx, typeof val === 'string' ? val : '🗺️', ix, iy, iconSize*1.1, 1);
 
       } else if(ring.type === 'state') {
         // Trance 🌀 + Mental Loop 🔁 + Pain ⚡ — show up to 3 icons
@@ -942,12 +938,12 @@ function draw(days) {
         if(pain)   stateIcons.push('⚡');
         const count = stateIcons.length;
         if(count === 1) {
-          drawIcon(ctx, stateIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.92);
+          drawIcon(ctx, stateIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 1);
         } else {
           const off = spread * 0.28;
           stateIcons.forEach((ic, k) => {
             const a = mid - off*(count-1)/2 + k*off;
-            drawIcon(ctx, ic, cx+Math.cos(a)*rMid, cy+Math.sin(a)*rMid, iconSize*0.85, 0.90);
+            drawIcon(ctx, ic, cx+Math.cos(a)*rMid, cy+Math.sin(a)*rMid, iconSize*0.85, 1);
           });
         }
 
@@ -964,7 +960,7 @@ function draw(days) {
         }
         const count = allIcons.length;
         if(count === 1) {
-          drawIcon(ctx, allIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.92);
+          drawIcon(ctx, allIcons[0], cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 1);
         } else {
           const arcS = Math.min(spread, Math.abs(drawStart-drawEnd)*0.85);
           allIcons.forEach((ic,k) => {
@@ -972,12 +968,12 @@ function draw(days) {
             const angle = mid - arcS*0.5 + t*arcS;
             const rOff = rMid + (ringW*0.12)*(k%2===0?1:-1);
             const sz = count > 4 ? iconSize*0.75 : iconSize*0.90;
-            drawIcon(ctx, ic, cx+Math.cos(angle)*rOff, cy+Math.sin(angle)*rOff, sz, 0.90);
+            drawIcon(ctx, ic, cx+Math.cos(angle)*rOff, cy+Math.sin(angle)*rOff, sz, 1);
           });
         }
 
       } else if(ring.type==='bool') {
-        drawIcon(ctx, ring.icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize*0.95, 0.92);
+        drawIcon(ctx, ring.icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize*0.95, 1);
 
       } else if(ring.type === 'iconscale') {
         const n = Math.max(1, Math.min(5, Math.round(val)));
@@ -987,12 +983,12 @@ function draw(days) {
         if(ring.key === 'Solitude') {
           // Use icon per level, full opacity — no opacity encoding which hides data
           const soloIcons = ['🌍','👥','🚶','🏔️','🌌'];
-          drawIcon(ctx, soloIcons[n-1] || '🚶', ix, iy, iconSize*1.05, 0.92);
+          drawIcon(ctx, soloIcons[n-1] || '🚶', ix, iy, iconSize*1.05, 1);
 
         } else if(ring.key === 'Trolley') {
-          drawIcon(ctx, '🏋️', ix, iy, iconSize, 0.92);
+          drawIcon(ctx, '🏋️', ix, iy, iconSize, 1);
           ctx.save();
-          ctx.globalAlpha = 0.92;
+          ctx.globalAlpha = 1.0;
           ctx.font = `bold ${Math.max(7, ringW*0.32)}px 'JetBrains Mono', monospace`;
           ctx.fillStyle = '#c4a068';
           ctx.textAlign = 'left';
@@ -1003,14 +999,14 @@ function draw(days) {
         } else {
           const levelMap = LEVEL_ICONS[ring.key];
           const icon = levelMap ? levelMap[n-1] : ring.icon;
-          drawIcon(ctx, icon, ix, iy, iconSize*1.05, 0.93);
+          drawIcon(ctx, icon, ix, iy, iconSize*1.05, 1);
         }
 
       } else {
         // pace — use level icons
         const n = Math.max(1, Math.min(5, Math.round(val)));
         const icon = LEVEL_ICONS['Pace'] ? LEVEL_ICONS['Pace'][n-1] : ring.icon;
-        drawIcon(ctx, icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 0.90);
+        drawIcon(ctx, icon, cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid, iconSize, 1);
       }
     });
 
@@ -1110,7 +1106,7 @@ function animateLatest() {
 
   // Pin icon above — bigger
   ctx.save();
-  ctx.globalAlpha = 0.95;
+  ctx.globalAlpha = 1.0;
   ctx.font = '18px serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
