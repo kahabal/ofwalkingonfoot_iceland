@@ -632,6 +632,11 @@ function doPost(e) {
 </div>
 
 <script>
+// ── CONFIG — set your Apps Script URL and token here ───
+// These are used as defaults if localStorage has nothing saved
+const DEFAULT_SHEETS_URL   = ''; // paste your Apps Script URL here
+const DEFAULT_SHEETS_TOKEN = ''; // paste your token here
+
 // ── STATE ──────────────────────────────────────────────
 let gps=null, weatherData=null, wxDetail=null;
 let gpsWatchId=null, gpsRetryTimer=null;
@@ -915,13 +920,42 @@ function toggleCardVisibility(id,btn){
 
 // ── GOOGLE SHEETS ──────────────────────────────────────
 function loadSheetsCfg(){
-  try{sheetsUrl=localStorage.getItem('fj_sheets_url')||'';sheetsToken=localStorage.getItem('fj_sheets_token')||'';}catch(e){}
-  updateSyncUi(sheetsUrl?'ready':'unconfigured');
-  if(document.getElementById('sheets-url')) document.getElementById('sheets-url').value=sheetsUrl;
-  if(document.getElementById('sheets-token')) document.getElementById('sheets-token').value=sheetsToken;
+  try {
+    sheetsUrl   = localStorage.getItem('fj_sheets_url')   || DEFAULT_SHEETS_URL;
+    sheetsToken = localStorage.getItem('fj_sheets_token') || DEFAULT_SHEETS_TOKEN;
+    // If we got values from defaults, also persist them to localStorage for next time
+    if(!localStorage.getItem('fj_sheets_url')   && DEFAULT_SHEETS_URL)   localStorage.setItem('fj_sheets_url',   DEFAULT_SHEETS_URL);
+    if(!localStorage.getItem('fj_sheets_token') && DEFAULT_SHEETS_TOKEN) localStorage.setItem('fj_sheets_token', DEFAULT_SHEETS_TOKEN);
+  } catch(e) {
+    sheetsUrl   = DEFAULT_SHEETS_URL;
+    sheetsToken = DEFAULT_SHEETS_TOKEN;
+  }
+  updateSyncUi(sheetsUrl ? 'ready' : 'unconfigured');
+  if(document.getElementById('sheets-url'))   document.getElementById('sheets-url').value   = sheetsUrl;
+  if(document.getElementById('sheets-token')) document.getElementById('sheets-token').value = sheetsToken;
+  const warn = document.getElementById('sync-warning');
+  if(warn) warn.style.display = sheetsUrl ? 'none' : 'block';
 }
-function saveSheetsCfg(){const u=document.getElementById('sheets-url').value.trim();sheetsUrl=u;try{localStorage.setItem('fj_sheets_url',u);}catch(e){}updateSyncUi(u?'ready':'unconfigured');showToast(u?'✓ URL saved':'URL cleared',u?'#4ade80':'#fb923c');}
-function saveTokenCfg(){const t=document.getElementById('sheets-token').value.trim();sheetsToken=t;try{localStorage.setItem('fj_sheets_token',t);}catch(e){}showToast(t?'✓ Token saved':'Token cleared',t?'#4ade80':'#fb923c');}
+
+function saveSheetsCfg(){
+  const u=document.getElementById('sheets-url').value.trim();
+  sheetsUrl=u;
+  try{localStorage.setItem('fj_sheets_url',u);}catch(e){
+    showToast('⚠️ localStorage not available — use HTTPS hosting','#fb923c');
+    return;
+  }
+  updateSyncUi(u?'ready':'unconfigured');
+  const warn=document.getElementById('sync-warning');
+  if(warn) warn.style.display=u?'none':'block';
+  showToast(u?'✓ URL saved — will persist between sessions':'URL cleared',u?'#4ade80':'#fb923c');
+}
+
+function saveTokenCfg(){
+  const t=document.getElementById('sheets-token').value.trim();
+  sheetsToken=t;
+  try{localStorage.setItem('fj_sheets_token',t);}catch(e){}
+  showToast(t?'✓ Token saved':'Token cleared',t?'#4ade80':'#fb923c');
+}
 async function testSheetsConnection(){if(!sheetsUrl){showToast('⚠️ No URL configured','#fb923c');return;}updateSyncUi('syncing');try{await pushToSheets({_test:'ping',timestamp:new Date().toISOString()});updateSyncUi('ok');showToast('✓ Connection works!','#4ade80');}catch(e){updateSyncUi('error');showToast('✗ Connection failed','#f87171');}}
 async function pushToSheets(row){if(!sheetsUrl)return false;const payload={...row};if(sheetsToken)payload._token=sheetsToken;await fetch(sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});return true;}
 function updateSyncUi(s){const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');const map={unconfigured:{c:'',t:'Google Sheets: not configured'},ready:{c:'',t:'Google Sheets: ready'},syncing:{c:'loading',t:'Google Sheets: syncing…'},ok:{c:'ok',t:'Google Sheets: synced ✓'},error:{c:'err',t:'Google Sheets: sync failed ✗'}};const st=map[s]||map.unconfigured;dot.className='sync-dot '+st.c;lbl.textContent=st.t;}
