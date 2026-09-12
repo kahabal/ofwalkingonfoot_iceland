@@ -33,7 +33,7 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
         
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-11 gap-3">
             <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm hover:border-slate-700 transition">
                 <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Distance</p>
                 <p class="text-lg sm:text-xl font-bold text-white mt-1">3,208 <span class="text-xs font-normal text-slate-400">km</span></p>
@@ -60,6 +60,16 @@
                 <p class="text-[10px] text-purple-400 font-mono mt-1">Max Day: 1,109 m</p>
             </div>
             <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm hover:border-slate-700 transition">
+                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Coldest Dip</p>
+                <p class="text-lg sm:text-xl font-bold text-teal-400 mt-1">10.9 <span class="text-xs font-normal text-slate-400">°C</span></p>
+                <p class="text-[10px] text-teal-500 font-mono mt-1">Peak Cold (July 29)</p>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm hover:border-slate-700 transition">
+                <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Warmest Peak</p>
+                <p class="text-lg sm:text-xl font-bold text-pink-400 mt-1">36.3 <span class="text-xs font-normal text-slate-400">°C</span></p>
+                <p class="text-[10px] text-pink-500 font-mono mt-1">Peak Surface Temp</p>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm hover:border-slate-700 transition">
                 <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Max Altitude</p>
                 <p class="text-lg sm:text-xl font-bold text-white mt-1">1,109 <span class="text-xs font-normal text-slate-400">m</span></p>
                 <p class="text-[10px] text-indigo-400 font-mono mt-1">Peak single ascent</p>
@@ -77,7 +87,7 @@
             <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-sm hover:border-slate-700 transition">
                 <p class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Peak Cardio</p>
                 <p class="text-lg sm:text-xl font-bold text-white mt-1">4.37</p>
-                <p class="text-[10px] text-teal-400 font-mono mt-1">Max Load Index</p>
+                <p class="text-[10px] text-cyan-400 font-mono mt-1">Max Load Index</p>
             </div>
         </div>
 
@@ -94,7 +104,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="layer-toggles">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="layer-toggles">
                 <!-- Populated dynamically -->
             </div>
         </section>
@@ -113,85 +123,85 @@
 
     <script>
         const archiveData = [
-            {"date": "2026-06-05", "cardio_load": 0.81, "steps": 22282, "distance_km": 16.4, "total_calories_kcal": 2844, "active_energy_kcal": 1289, "gain_meters": 67.1},
-            {"date": "2026-06-06", "cardio_load": 0.80, "steps": 32085, "distance_km": 23.7, "total_calories_kcal": 5415, "active_energy_kcal": 3860, "gain_meters": 80.8},
-            {"date": "2026-06-07", "cardio_load": 0.79, "steps": 43729, "distance_km": 32.3, "total_calories_kcal": 3557, "active_energy_kcal": 2001, "gain_meters": 230.1},
-            {"date": "2026-06-08", "cardio_load": 0.65, "steps": 52367, "distance_km": 38.6, "total_calories_kcal": 3930, "active_energy_kcal": 2375, "gain_meters": 164.6},
-            {"date": "2026-06-09", "cardio_load": 0.65, "steps": 70891, "distance_km": 52.3, "total_calories_kcal": 4499, "active_energy_kcal": 2944, "gain_meters": 310.9},
-            {"date": "2026-06-10", "cardio_load": 0.79, "steps": 53821, "distance_km": 39.7, "total_calories_kcal": 4805, "active_energy_kcal": 3250, "gain_meters": 115.8},
-            {"date": "2026-06-11", "cardio_load": 0.92, "steps": 66712, "distance_km": 49.2, "total_calories_kcal": 5531, "active_energy_kcal": 3975, "gain_meters": 216.4},
-            {"date": "2026-06-12", "cardio_load": 0.79, "steps": 49921, "distance_km": 36.8, "total_calories_kcal": 4490, "active_energy_kcal": 2935, "gain_meters": 51.8},
-            {"date": "2026-06-13", "cardio_load": 0.77, "steps": 50512, "distance_km": 37.3, "total_calories_kcal": 5314, "active_energy_kcal": 3759, "gain_meters": 478.5},
-            {"date": "2026-06-14", "cardio_load": 1.01, "steps": 61723, "distance_km": 45.5, "total_calories_kcal": 4364, "active_energy_kcal": 2809, "gain_meters": 219.5},
-            {"date": "2026-06-15", "cardio_load": 0.92, "steps": 46321, "distance_km": 34.2, "total_calories_kcal": 3980, "active_energy_kcal": 2450, "gain_meters": 9.1},
-            {"date": "2026-06-16", "cardio_load": 0.90, "steps": 1012, "distance_km": 0.7, "total_calories_kcal": 3208, "active_energy_kcal": 1653, "gain_meters": 128.0},
-            {"date": "2026-06-17", "cardio_load": 0.31, "steps": 21023, "distance_km": 15.5, "total_calories_kcal": 4886, "active_energy_kcal": 3331, "gain_meters": 298.7},
-            {"date": "2026-06-18", "cardio_load": 0.52, "steps": 26154, "distance_km": 19.3, "total_calories_kcal": 5541, "active_energy_kcal": 3986, "gain_meters": 140.2},
-            {"date": "2026-06-19", "cardio_load": 0.59, "steps": 54213, "distance_km": 40.0, "total_calories_kcal": 5467, "active_energy_kcal": 3912, "gain_meters": 33.5},
-            {"date": "2026-06-20", "cardio_load": 0.86, "steps": 74912, "distance_km": 55.3, "total_calories_kcal": 3641, "active_energy_kcal": 2086, "gain_meters": 79.2},
-            {"date": "2026-06-21", "cardio_load": 0.86, "steps": 71723, "distance_km": 52.9, "total_calories_kcal": 4734, "active_energy_kcal": 3179, "gain_meters": 228.6},
-            {"date": "2026-06-22", "cardio_load": 0.91, "steps": 32812, "distance_km": 24.2, "total_calories_kcal": 5636, "active_energy_kcal": 4081, "gain_meters": 423.7},
-            {"date": "2026-06-23", "cardio_load": 0.80, "steps": 56821, "distance_km": 41.9, "total_calories_kcal": 3398, "active_energy_kcal": 1843, "gain_meters": 374.9},
-            {"date": "2026-06-24", "cardio_load": 0.70, "steps": 77124, "distance_km": 56.9, "total_calories_kcal": 4304, "active_energy_kcal": 2749, "gain_meters": 219.5},
-            {"date": "2026-06-25", "cardio_load": 0.82, "steps": 32212, "distance_km": 23.8, "total_calories_kcal": 4554, "active_energy_kcal": 2999, "gain_meters": 256.0},
-            {"date": "2026-06-26", "cardio_load": 0.69, "steps": 53791, "distance_km": 39.7, "total_calories_kcal": 5667, "active_energy_kcal": 4112, "gain_meters": 149.4},
-            {"date": "2026-06-27", "cardio_load": 0.71, "steps": 60213, "distance_km": 44.4, "total_calories_kcal": 4000, "active_energy_kcal": 2445, "gain_meters": 143.3},
-            {"date": "2026-06-28", "cardio_load": 0.68, "steps": 46123, "distance_km": 34.0, "total_calories_kcal": 4601, "active_energy_kcal": 3046, "gain_meters": 335.3},
-            {"date": "2026-06-29", "cardio_load": 0.61, "steps": 52691, "distance_km": 38.9, "total_calories_kcal": 4467, "active_energy_kcal": 2870, "gain_meters": 292.6},
-            {"date": "2026-06-30", "cardio_load": 0.90, "steps": 14781, "distance_km": 10.9, "total_calories_kcal": 2365, "active_energy_kcal": 810, "gain_meters": 30.5},
-            {"date": "2026-07-01", "cardio_load": 0.98, "steps": 61791, "distance_km": 45.6, "total_calories_kcal": 4768, "active_energy_kcal": 3213, "gain_meters": 533.4},
-            {"date": "2026-07-02", "cardio_load": 0.48, "steps": 56821, "distance_km": 41.9, "total_calories_kcal": 6668, "active_energy_kcal": 5113, "gain_meters": 278.9},
-            {"date": "2026-07-03", "cardio_load": 0.74, "steps": 85577, "distance_km": 63.1, "total_calories_kcal": 4196, "active_energy_kcal": 2641, "gain_meters": 774.2},
-            {"date": "2026-07-04", "cardio_load": 0.75, "steps": 70123, "distance_km": 51.7, "total_calories_kcal": 4289, "active_energy_kcal": 2734, "gain_meters": 307.8},
-            {"date": "2026-07-05", "cardio_load": 0.51, "steps": 50512, "distance_km": 37.3, "total_calories_kcal": 4391, "active_energy_kcal": 2836, "gain_meters": 222.5},
-            {"date": "2026-07-06", "cardio_load": 0.73, "steps": 57891, "distance_km": 42.7, "total_calories_kcal": 4370, "active_energy_kcal": 2815, "gain_meters": 201.2},
-            {"date": "2026-07-07", "cardio_load": 0.78, "steps": 58512, "distance_km": 43.2, "total_calories_kcal": 5581, "active_energy_kcal": 4026, "gain_meters": 307.8},
-            {"date": "2026-07-08", "cardio_load": 0.54, "steps": 51213, "distance_km": 37.8, "total_calories_kcal": 4668, "active_energy_kcal": 3113, "gain_meters": 341.4},
-            {"date": "2026-07-09", "cardio_load": 0.67, "steps": 77123, "distance_km": 56.9, "total_calories_kcal": 4654, "active_energy_kcal": 3099, "gain_meters": 115.8},
-            {"date": "2026-07-10", "cardio_load": 0.61, "steps": 59723, "distance_km": 44.1, "total_calories_kcal": 3756, "active_energy_kcal": 2201, "gain_meters": 115.8},
-            {"date": "2026-07-11", "cardio_load": 0.43, "steps": 42023, "distance_km": 31.0, "total_calories_kcal": 4648, "active_energy_kcal": 3093, "gain_meters": 307.8},
-            {"date": "2026-07-12", "cardio_load": 0.53, "steps": 54012, "distance_km": 39.9, "total_calories_kcal": 4437, "active_energy_kcal": 2882, "gain_meters": 240.8},
-            {"date": "2026-07-13", "cardio_load": 0.53, "steps": 52102, "distance_km": 38.4, "total_calories_kcal": 3098, "active_energy_kcal": 1543, "gain_meters": 216.4},
-            {"date": "2026-07-14", "cardio_load": 0.63, "steps": 30123, "distance_km": 22.2, "total_calories_kcal": 4557, "active_energy_kcal": 3002, "gain_meters": 201.2},
-            {"date": "2026-07-15", "cardio_load": 0.49, "steps": 64012, "distance_km": 47.2, "total_calories_kcal": 4024, "active_energy_kcal": 2469, "gain_meters": 128.0},
-            {"date": "2026-07-16", "cardio_load": 0.51, "steps": 52812, "distance_km": 39.0, "total_calories_kcal": 4501, "active_energy_kcal": 2946, "gain_meters": 384.0},
-            {"date": "2026-07-17", "cardio_load": 0.74, "steps": 52791, "distance_km": 38.9, "total_calories_kcal": 2926, "active_energy_kcal": 1371, "gain_meters": 411.5},
-            {"date": "2026-07-18", "cardio_load": 0.78, "steps": 59123, "distance_km": 43.6, "total_calories_kcal": 4145, "active_energy_kcal": 2590, "gain_meters": 167.6},
-            {"date": "2026-07-19", "cardio_load": 0.54, "steps": 42512, "distance_km": 31.4, "total_calories_kcal": 4775, "active_energy_kcal": 3220, "gain_meters": 411.5},
-            {"date": "2026-07-20", "cardio_load": 0.67, "steps": 68123, "distance_km": 50.3, "total_calories_kcal": 4666, "active_energy_kcal": 3111, "gain_meters": 493.8},
-            {"date": "2026-07-21", "cardio_load": 0.64, "steps": 57391, "distance_km": 42.3, "total_calories_kcal": 5678, "active_energy_kcal": 4123, "gain_meters": 1109.4},
-            {"date": "2026-07-22", "cardio_load": 0.53, "steps": 76723, "distance_km": 56.6, "total_calories_kcal": 4830, "active_energy_kcal": 3275, "gain_meters": 378.0},
-            {"date": "2026-07-23", "cardio_load": 0.53, "steps": 64691, "distance_km": 47.7, "total_calories_kcal": 4835, "active_energy_kcal": 3280, "gain_meters": 387.1},
-            {"date": "2026-07-24", "cardio_load": 0.63, "steps": 80273, "distance_km": 59.2, "total_calories_kcal": 5497, "active_energy_kcal": 3942, "gain_meters": 295.7},
-            {"date": "2026-07-25", "cardio_load": 0.49, "steps": 52012, "distance_km": 38.4, "total_calories_kcal": 5371, "active_energy_kcal": 3816, "gain_meters": 149.4},
-            {"date": "2026-07-26", "cardio_load": 0.51, "steps": 74791, "distance_km": 55.2, "total_calories_kcal": 5832, "active_energy_kcal": 4276, "gain_meters": 161.5},
-            {"date": "2026-07-27", "cardio_load": 0.98, "steps": 82746, "distance_km": 61.0, "total_calories_kcal": 5263, "active_energy_kcal": 3708, "gain_meters": 341.4},
-            {"date": "2026-07-28", "cardio_load": 0.83, "steps": 69012, "distance_km": 50.9, "total_calories_kcal": 5128, "active_energy_kcal": 3573, "gain_meters": 389.9},
-            {"date": "2026-07-29", "cardio_load": 0.73, "steps": 83723, "distance_km": 61.8, "total_calories_kcal": 5355, "active_energy_kcal": 3800, "gain_meters": 295.7},
-            {"date": "2026-07-30", "cardio_load": 0.67, "steps": 68891, "distance_km": 50.8, "total_calories_kcal": 4902, "active_energy_kcal": 3347, "gain_meters": 149.4},
-            {"date": "2026-07-31", "cardio_load": 0.67, "steps": 72891, "distance_km": 53.8, "total_calories_kcal": 6083, "active_energy_kcal": 4527, "gain_meters": 161.5},
-            {"date": "2026-08-01", "cardio_load": 0.79, "steps": 73012, "distance_km": 53.9, "total_calories_kcal": 6119, "active_energy_kcal": 4564, "gain_meters": 115.8},
-            {"date": "2026-08-02", "cardio_load": 0.74, "steps": 85358, "distance_km": 64.8, "total_calories_kcal": 6266, "active_energy_kcal": 4711, "gain_meters": 15.2},
-            {"date": "2026-08-03", "cardio_load": 0.65, "steps": 70512, "distance_km": 52.0, "total_calories_kcal": 5191, "active_energy_kcal": 3635, "gain_meters": 518.2},
-            {"date": "2026-08-04", "cardio_load": 0.83, "steps": 68491, "distance_km": 50.5, "total_calories_kcal": 5288, "active_energy_kcal": 3732, "gain_meters": 643.1},
-            {"date": "2026-08-05", "cardio_load": 0.67, "steps": 71512, "distance_km": 52.7, "total_calories_kcal": 5382, "active_energy_kcal": 3826, "gain_meters": 880.9},
-            {"date": "2026-08-06", "cardio_load": 0.69, "steps": 71791, "distance_km": 52.9, "total_calories_kcal": 4115, "active_energy_kcal": 2559, "gain_meters": 137.2},
-            {"date": "2026-08-07", "cardio_load": 0.98, "steps": 58102, "distance_km": 42.9, "total_calories_kcal": 4139, "active_energy_kcal": 2583, "gain_meters": 594.4},
-            {"date": "2026-08-08", "cardio_load": 0.77, "steps": 54912, "distance_km": 40.5, "total_calories_kcal": 3677, "active_energy_kcal": 2121, "gain_meters": 0.0},
-            {"date": "2026-08-09", "cardio_load": 0.59, "steps": 46102, "distance_km": 34.0, "total_calories_kcal": 5043, "active_energy_kcal": 3487, "gain_meters": 487.7},
-            {"date": "2026-08-10", "cardio_load": 0.62, "steps": 74123, "distance_km": 54.6, "total_calories_kcal": 4882, "active_energy_kcal": 3326, "gain_meters": 478.5},
-            {"date": "2026-08-11", "cardio_load": 0.47, "steps": 36912, "distance_km": 27.2, "total_calories_kcal": 3342, "active_energy_kcal": 1786, "gain_meters": 125.0},
-            {"date": "2026-08-12", "cardio_load": 0.58, "steps": 69123, "distance_km": 51.0, "total_calories_kcal": 5107, "active_energy_kcal": 3551, "gain_meters": 423.7},
-            {"date": "2026-08-13", "cardio_load": 0.60, "steps": 59512, "distance_km": 43.9, "total_calories_kcal": 4255, "active_energy_kcal": 2699, "gain_meters": 274.3},
-            {"date": "2026-08-14", "cardio_load": 0.59, "steps": 40912, "distance_km": 30.2, "total_calories_kcal": 3974, "active_energy_kcal": 2418, "gain_meters": 530.4},
-            {"date": "2026-08-15", "cardio_load": 0.58, "steps": 68912, "distance_km": 50.8, "total_calories_kcal": 5126, "active_energy_kcal": 3570, "gain_meters": 646.2},
-            {"date": "2026-08-16", "cardio_load": 0.55, "steps": 71912, "distance_km": 53.0, "total_calories_kcal": 4906, "active_energy_kcal": 3350, "gain_meters": 792.5},
-            {"date": "2026-08-17", "cardio_load": 0.41, "steps": 58102, "distance_km": 42.8, "total_calories_kcal": 4258, "active_energy_kcal": 2702, "gain_meters": 262.1},
-            {"date": "2026-08-18", "cardio_load": 0.63, "steps": 84512, "distance_km": 62.3, "total_calories_kcal": 4669, "active_energy_kcal": 3113, "gain_meters": 1106.4},
-            {"date": "2026-08-19", "cardio_load": 0.51, "steps": 69512, "distance_km": 51.2, "total_calories_kcal": 3865, "active_energy_kcal": 2309, "gain_meters": 789.4},
-            {"date": "2026-08-20", "cardio_load": 0.63, "steps": 59612, "distance_km": 43.9, "total_calories_kcal": 5119, "active_energy_kcal": 3563, "gain_meters": 225.6},
-            {"date": "2026-08-21", "cardio_load": 0.54, "steps": 41012, "distance_km": 30.2, "total_calories_kcal": 3976, "active_energy_kcal": 2420, "gain_meters": 67.1},
-            {"date": "2026-08-22", "cardio_load": 0.45, "steps": 5391, "distance_km": 4.0, "total_calories_kcal": 1845, "active_energy_kcal": 290, "gain_meters": 30.5}
+            {"date": "2026-06-05", "cardio_load": 0.81, "steps": 22282, "distance_km": 16.4, "total_calories_kcal": 2844, "active_energy_kcal": 1289, "gain_meters": 67.1, "walking_skin_temp": 28.51},
+            {"date": "2026-06-06", "cardio_load": 0.80, "steps": 32085, "distance_km": 23.7, "total_calories_kcal": 5415, "active_energy_kcal": 3860, "gain_meters": 80.8, "walking_skin_temp": 28.50},
+            {"date": "2026-06-07", "cardio_load": 0.79, "steps": 43729, "distance_km": 32.3, "total_calories_kcal": 3557, "active_energy_kcal": 2001, "gain_meters": 230.1, "walking_skin_temp": 26.67},
+            {"date": "2026-06-08", "cardio_load": 0.65, "steps": 52367, "distance_km": 38.6, "total_calories_kcal": 3930, "active_energy_kcal": 2375, "gain_meters": 164.6, "walking_skin_temp": 23.83},
+            {"date": "2026-06-09", "cardio_load": 0.65, "steps": 70891, "distance_km": 52.3, "total_calories_kcal": 4499, "active_energy_kcal": 2944, "gain_meters": 310.9, "walking_skin_temp": 24.25},
+            {"date": "2026-06-10", "cardio_load": 0.79, "steps": 53821, "distance_km": 39.7, "total_calories_kcal": 4805, "active_energy_kcal": 3250, "gain_meters": 115.8, "walking_skin_temp": 25.10},
+            {"date": "2026-06-11", "cardio_load": 0.92, "steps": 66712, "distance_km": 49.2, "total_calories_kcal": 5531, "active_energy_kcal": 3975, "gain_meters": 216.4, "walking_skin_temp": 24.96},
+            {"date": "2026-06-12", "cardio_load": 0.79, "steps": 49921, "distance_km": 36.8, "total_calories_kcal": 4490, "active_energy_kcal": 2935, "gain_meters": 51.8, "walking_skin_temp": 25.32},
+            {"date": "2026-06-13", "cardio_load": 0.77, "steps": 50512, "distance_km": 37.3, "total_calories_kcal": 5314, "active_energy_kcal": 3759, "gain_meters": 478.5, "walking_skin_temp": 24.89},
+            {"date": "2026-06-14", "cardio_load": 1.01, "steps": 61723, "distance_km": 45.5, "total_calories_kcal": 4364, "active_energy_kcal": 2809, "gain_meters": 219.5, "walking_skin_temp": 27.81},
+            {"date": "2026-06-15", "cardio_load": 0.92, "steps": 46321, "distance_km": 34.2, "total_calories_kcal": 3980, "active_energy_kcal": 2450, "gain_meters": 9.1, "walking_skin_temp": 27.56},
+            {"date": "2026-06-16", "cardio_load": 0.90, "steps": 1012, "distance_km": 0.7, "total_calories_kcal": 3208, "active_energy_kcal": 1653, "gain_meters": 128.0, "walking_skin_temp": 24.80},
+            {"date": "2026-06-17", "cardio_load": 0.31, "steps": 21023, "distance_km": 15.5, "total_calories_kcal": 4886, "active_energy_kcal": 3331, "gain_meters": 298.7, "walking_skin_temp": 26.70},
+            {"date": "2026-06-18", "cardio_load": 0.52, "steps": 26154, "distance_km": 19.3, "total_calories_kcal": 5541, "active_energy_kcal": 3986, "gain_meters": 140.2, "walking_skin_temp": 28.15},
+            {"date": "2026-06-19", "cardio_load": 0.59, "steps": 54213, "distance_km": 40.0, "total_calories_kcal": 5467, "active_energy_kcal": 3912, "gain_meters": 33.5, "walking_skin_temp": 27.90},
+            {"date": "2026-06-20", "cardio_load": 0.86, "steps": 74912, "distance_km": 55.3, "total_calories_kcal": 3641, "active_energy_kcal": 2086, "gain_meters": 79.2, "walking_skin_temp": 26.40},
+            {"date": "2026-06-21", "cardio_load": 0.86, "steps": 71723, "distance_km": 52.9, "total_calories_kcal": 4734, "active_energy_kcal": 3179, "gain_meters": 228.6, "walking_skin_temp": 25.80},
+            {"date": "2026-06-22", "cardio_load": 0.91, "steps": 32812, "distance_km": 24.2, "total_calories_kcal": 5636, "active_energy_kcal": 4081, "gain_meters": 423.7, "walking_skin_temp": 26.10},
+            {"date": "2026-06-23", "cardio_load": 0.80, "steps": 56821, "distance_km": 41.9, "total_calories_kcal": 3398, "active_energy_kcal": 1843, "gain_meters": 374.9, "walking_skin_temp": 22.32},
+            {"date": "2026-06-24", "cardio_load": 0.70, "steps": 77124, "distance_km": 56.9, "total_calories_kcal": 4304, "active_energy_kcal": 2749, "gain_meters": 219.5, "walking_skin_temp": 25.40},
+            {"date": "2026-06-25", "cardio_load": 0.82, "steps": 32212, "distance_km": 23.8, "total_calories_kcal": 4554, "active_energy_kcal": 2999, "gain_meters": 256.0, "walking_skin_temp": 27.10},
+            {"date": "2026-06-26", "cardio_load": 0.69, "steps": 53791, "distance_km": 39.7, "total_calories_kcal": 5667, "active_energy_kcal": 4112, "gain_meters": 149.4, "walking_skin_temp": 27.80},
+            {"date": "2026-06-27", "cardio_load": 0.71, "steps": 60213, "distance_km": 44.4, "total_calories_kcal": 4000, "active_energy_kcal": 2445, "gain_meters": 143.3, "walking_skin_temp": 26.90},
+            {"date": "2026-06-28", "cardio_load": 0.68, "steps": 46123, "distance_km": 34.0, "total_calories_kcal": 4601, "active_energy_kcal": 3046, "gain_meters": 335.3, "walking_skin_temp": 25.70},
+            {"date": "2026-06-29", "cardio_load": 0.61, "steps": 52691, "distance_km": 38.9, "total_calories_kcal": 4467, "active_energy_kcal": 2870, "gain_meters": 292.6, "walking_skin_temp": 26.50},
+            {"date": "2026-06-30", "cardio_load": 0.90, "steps": 14781, "distance_km": 10.9, "total_calories_kcal": 2365, "active_energy_kcal": 810, "gain_meters": 30.5, "walking_skin_temp": 29.10},
+            {"date": "2026-07-01", "cardio_load": 0.98, "steps": 61791, "distance_km": 45.6, "total_calories_kcal": 4768, "active_energy_kcal": 3213, "gain_meters": 533.4, "walking_skin_temp": 26.20},
+            {"date": "2026-07-02", "cardio_load": 0.48, "steps": 56821, "distance_km": 41.9, "total_calories_kcal": 6668, "active_energy_kcal": 5113, "gain_meters": 278.9, "walking_skin_temp": 25.80},
+            {"date": "2026-07-03", "cardio_load": 0.74, "steps": 85577, "distance_km": 63.1, "total_calories_kcal": 4196, "active_energy_kcal": 2641, "gain_meters": 774.2, "walking_skin_temp": 27.30},
+            {"date": "2026-07-04", "cardio_load": 0.75, "steps": 70123, "distance_km": 51.7, "total_calories_kcal": 4289, "active_energy_kcal": 2734, "gain_meters": 307.8, "walking_skin_temp": 26.90},
+            {"date": "2026-07-05", "cardio_load": 0.51, "steps": 50512, "distance_km": 37.3, "total_calories_kcal": 4391, "active_energy_kcal": 2836, "gain_meters": 222.5, "walking_skin_temp": 27.40},
+            {"date": "2026-07-06", "cardio_load": 0.73, "steps": 57891, "distance_km": 42.7, "total_calories_kcal": 4370, "active_energy_kcal": 2815, "gain_meters": 201.2, "walking_skin_temp": 26.10},
+            {"date": "2026-07-07", "cardio_load": 0.78, "steps": 58512, "distance_km": 43.2, "total_calories_kcal": 5581, "active_energy_kcal": 4026, "gain_meters": 307.8, "walking_skin_temp": 26.70},
+            {"date": "2026-07-08", "cardio_load": 0.54, "steps": 51213, "distance_km": 37.8, "total_calories_kcal": 4668, "active_energy_kcal": 3113, "gain_meters": 341.4, "walking_skin_temp": 25.90},
+            {"date": "2026-07-09", "cardio_load": 0.67, "steps": 77123, "distance_km": 56.9, "total_calories_kcal": 4654, "active_energy_kcal": 3099, "gain_meters": 115.8, "walking_skin_temp": 27.60},
+            {"date": "2026-07-10", "cardio_load": 0.61, "steps": 59723, "distance_km": 44.1, "total_calories_kcal": 3756, "active_energy_kcal": 2201, "gain_meters": 115.8, "walking_skin_temp": 28.20},
+            {"date": "2026-07-11", "cardio_load": 0.43, "steps": 42023, "distance_km": 31.0, "total_calories_kcal": 4648, "active_energy_kcal": 3093, "gain_meters": 307.8, "walking_skin_temp": 26.40},
+            {"date": "2026-07-12", "cardio_load": 0.53, "steps": 54012, "distance_km": 39.9, "total_calories_kcal": 4437, "active_energy_kcal": 2882, "gain_meters": 240.8, "walking_skin_temp": 25.80},
+            {"date": "2026-07-13", "cardio_load": 0.53, "steps": 52102, "distance_km": 38.4, "total_calories_kcal": 3098, "active_energy_kcal": 1543, "gain_meters": 216.4, "walking_skin_temp": 24.90},
+            {"date": "2026-07-14", "cardio_load": 0.63, "steps": 30123, "distance_km": 22.2, "total_calories_kcal": 4557, "active_energy_kcal": 3002, "gain_meters": 201.2, "walking_skin_temp": 27.10},
+            {"date": "2026-07-15", "cardio_load": 0.49, "steps": 64012, "distance_km": 47.2, "total_calories_kcal": 4024, "active_energy_kcal": 2469, "gain_meters": 128.0, "walking_skin_temp": 26.60},
+            {"date": "2026-07-16", "cardio_load": 0.51, "steps": 52812, "distance_km": 39.0, "total_calories_kcal": 4501, "active_energy_kcal": 2946, "gain_meters": 384.0, "walking_skin_temp": 25.30},
+            {"date": "2026-07-17", "cardio_load": 0.74, "steps": 52791, "distance_km": 38.9, "total_calories_kcal": 2926, "active_energy_kcal": 1371, "gain_meters": 411.5, "walking_skin_temp": 24.80},
+            {"date": "2026-07-18", "cardio_load": 0.78, "steps": 59123, "distance_km": 43.6, "total_calories_kcal": 4145, "active_energy_kcal": 2590, "gain_meters": 167.6, "walking_skin_temp": 26.50},
+            {"date": "2026-07-19", "cardio_load": 0.54, "steps": 42512, "distance_km": 31.4, "total_calories_kcal": 4775, "active_energy_kcal": 3220, "gain_meters": 411.5, "walking_skin_temp": 25.90},
+            {"date": "2026-07-20", "cardio_load": 0.67, "steps": 68123, "distance_km": 50.3, "total_calories_kcal": 4666, "active_energy_kcal": 3111, "gain_meters": 493.8, "walking_skin_temp": 26.80},
+            {"date": "2026-07-21", "cardio_load": 0.64, "steps": 57391, "distance_km": 42.3, "total_calories_kcal": 5678, "active_energy_kcal": 4123, "gain_meters": 1109.4, "walking_skin_temp": 23.40},
+            {"date": "2026-07-22", "cardio_load": 0.53, "steps": 76723, "distance_km": 56.6, "total_calories_kcal": 4830, "active_energy_kcal": 3275, "gain_meters": 378.0, "walking_skin_temp": 26.20},
+            {"date": "2026-07-23", "cardio_load": 0.53, "steps": 64691, "distance_km": 47.7, "total_calories_kcal": 4835, "active_energy_kcal": 3280, "gain_meters": 387.1, "walking_skin_temp": 27.10},
+            {"date": "2026-07-24", "cardio_load": 0.63, "steps": 80273, "distance_km": 59.2, "total_calories_kcal": 5497, "active_energy_kcal": 3942, "gain_meters": 295.7, "walking_skin_temp": 27.50},
+            {"date": "2026-07-25", "cardio_load": 0.49, "steps": 52012, "distance_km": 38.4, "total_calories_kcal": 5371, "active_energy_kcal": 3816, "gain_meters": 149.4, "walking_skin_temp": 28.30},
+            {"date": "2026-07-26", "cardio_load": 0.51, "steps": 74791, "distance_km": 55.2, "total_calories_kcal": 5832, "active_energy_kcal": 4276, "gain_meters": 161.5, "walking_skin_temp": 27.40},
+            {"date": "2026-07-27", "cardio_load": 0.98, "steps": 82746, "distance_km": 61.0, "total_calories_kcal": 5263, "active_energy_kcal": 3708, "gain_meters": 341.4, "walking_skin_temp": 26.80},
+            {"date": "2026-07-28", "cardio_load": 0.83, "steps": 69012, "distance_km": 50.9, "total_calories_kcal": 5128, "active_energy_kcal": 3573, "gain_meters": 389.9, "walking_skin_temp": 25.10},
+            {"date": "2026-07-29", "cardio_load": 0.73, "steps": 83723, "distance_km": 61.8, "total_calories_kcal": 5355, "active_energy_kcal": 3800, "gain_meters": 295.7, "walking_skin_temp": 22.32},
+            {"date": "2026-07-30", "cardio_load": 0.67, "steps": 68891, "distance_km": 50.8, "total_calories_kcal": 4902, "active_energy_kcal": 3347, "gain_meters": 149.4, "walking_skin_temp": 26.50},
+            {"date": "2026-07-31", "cardio_load": 0.67, "steps": 72891, "distance_km": 53.8, "total_calories_kcal": 6083, "active_energy_kcal": 4527, "gain_meters": 161.5, "walking_skin_temp": 27.20},
+            {"date": "2026-08-01", "cardio_load": 0.79, "steps": 73012, "distance_km": 53.9, "total_calories_kcal": 6119, "active_energy_kcal": 4564, "gain_meters": 115.8, "walking_skin_temp": 26.80},
+            {"date": "2026-08-02", "cardio_load": 0.74, "steps": 85358, "distance_km": 64.8, "total_calories_kcal": 6266, "active_energy_kcal": 4711, "gain_meters": 15.2, "walking_skin_temp": 28.90},
+            {"date": "2026-08-03", "cardio_load": 0.65, "steps": 70512, "distance_km": 52.0, "total_calories_kcal": 5191, "active_energy_kcal": 3635, "gain_meters": 518.2, "walking_skin_temp": 26.40},
+            {"date": "2026-08-04", "cardio_load": 0.83, "steps": 68491, "distance_km": 50.5, "total_calories_kcal": 5288, "active_energy_kcal": 3732, "gain_meters": 643.1, "walking_skin_temp": 25.70},
+            {"date": "2026-08-05", "cardio_load": 0.67, "steps": 71512, "distance_km": 52.7, "total_calories_kcal": 5382, "active_energy_kcal": 3826, "gain_meters": 880.9, "walking_skin_temp": 24.60},
+            {"date": "2026-08-06", "cardio_load": 0.69, "steps": 71791, "distance_km": 52.9, "total_calories_kcal": 4115, "active_energy_kcal": 2559, "gain_meters": 137.2, "walking_skin_temp": 27.10},
+            {"date": "2026-08-07", "cardio_load": 0.98, "steps": 58102, "distance_km": 42.9, "total_calories_kcal": 4139, "active_energy_kcal": 2583, "gain_meters": 594.4, "walking_skin_temp": 26.30},
+            {"date": "2026-08-08", "cardio_load": 0.77, "steps": 54912, "distance_km": 40.5, "total_calories_kcal": 3677, "active_energy_kcal": 2121, "gain_meters": 0.0, "walking_skin_temp": 27.80},
+            {"date": "2026-08-09", "cardio_load": 0.59, "steps": 46102, "distance_km": 34.0, "total_calories_kcal": 5043, "active_energy_kcal": 3487, "gain_meters": 487.7, "walking_skin_temp": 27.50},
+            {"date": "2026-08-10", "cardio_load": 0.62, "steps": 74123, "distance_km": 54.6, "total_calories_kcal": 4882, "active_energy_kcal": 3326, "gain_meters": 478.5, "walking_skin_temp": 28.16},
+            {"date": "2026-08-11", "cardio_load": 0.47, "steps": 36912, "distance_km": 27.2, "total_calories_kcal": 3342, "active_energy_kcal": 1786, "gain_meters": 125.0, "walking_skin_temp": 26.90},
+            {"date": "2026-08-12", "cardio_load": 0.58, "steps": 69123, "distance_km": 51.0, "total_calories_kcal": 5107, "active_energy_kcal": 3551, "gain_meters": 423.7, "walking_skin_temp": 26.10},
+            {"date": "2026-08-13", "cardio_load": 0.60, "steps": 59512, "distance_km": 43.9, "total_calories_kcal": 4255, "active_energy_kcal": 2699, "gain_meters": 274.3, "walking_skin_temp": 27.40},
+            {"date": "2026-08-14", "cardio_load": 0.59, "steps": 40912, "distance_km": 30.2, "total_calories_kcal": 3974, "active_energy_kcal": 2418, "gain_meters": 530.4, "walking_skin_temp": 26.80},
+            {"date": "2026-08-15", "cardio_load": 0.58, "steps": 68912, "distance_km": 50.8, "total_calories_kcal": 5126, "active_energy_kcal": 3570, "gain_meters": 646.2, "walking_skin_temp": 27.70},
+            {"date": "2026-08-16", "cardio_load": 0.55, "steps": 71912, "distance_km": 53.0, "total_calories_kcal": 4906, "active_energy_kcal": 3350, "gain_meters": 792.5, "walking_skin_temp": 27.20},
+            {"date": "2026-08-17", "cardio_load": 0.41, "steps": 58102, "distance_km": 42.8, "total_calories_kcal": 4258, "active_energy_kcal": 2702, "gain_meters": 262.1, "walking_skin_temp": 25.90},
+            {"date": "2026-08-18", "cardio_load": 0.63, "steps": 84512, "distance_km": 62.3, "total_calories_kcal": 4669, "active_energy_kcal": 3113, "gain_meters": 1106.4, "walking_skin_temp": 28.01},
+            {"date": "2026-08-19", "cardio_load": 0.51, "steps": 69512, "distance_km": 51.2, "total_calories_kcal": 3865, "active_energy_kcal": 2309, "gain_meters": 789.4, "walking_skin_temp": 26.86},
+            {"date": "2026-08-20", "cardio_load": 0.63, "steps": 59612, "distance_km": 43.9, "total_calories_kcal": 5119, "active_energy_kcal": 3563, "gain_meters": 225.6, "walking_skin_temp": 25.21},
+            {"date": "2026-08-21", "cardio_load": 0.54, "steps": 41012, "distance_km": 30.2, "total_calories_kcal": 3976, "active_energy_kcal": 2420, "gain_meters": 67.1, "walking_skin_temp": 27.31},
+            {"date": "2026-08-22", "cardio_load": 0.45, "steps": 5391, "distance_km": 4.0, "total_calories_kcal": 1845, "active_energy_kcal": 290, "gain_meters": 30.5, "walking_skin_temp": 31.31}
         ];
 
         const metricsConfig = {
@@ -199,10 +209,11 @@
             steps: { label: 'Steps', color: '#f97316', formatter: (val, d) => `${Math.round(val).toLocaleString()} (${d.distance_km ? d.distance_km.toFixed(1) : '0'} km)` },
             active_energy_kcal: { label: 'Active Energy (kcal)', color: '#ef4444', formatter: val => Math.round(val) + ' kcal' },
             total_calories_kcal: { label: 'Total Calories (kcal)', color: '#eab308', formatter: val => Math.round(val) + ' kcal' },
-            gain_meters: { label: 'Altitude Gain (m)', color: '#8b5cf6', formatter: val => Math.round(val) + ' m' }
+            gain_meters: { label: 'Altitude Gain (m)', color: '#8b5cf6', formatter: val => Math.round(val) + ' m' },
+            walking_skin_temp: { label: 'Walking Skin Temp (°C)', color: '#14b8a6', formatter: val => val.toFixed(2) + ' °C' }
         };
 
-        const activeLayers = new Set(['cardio_load', 'steps', 'total_calories_kcal']);
+        const activeLayers = new Set(['cardio_load', 'steps', 'total_calories_kcal', 'walking_skin_temp']);
         let isNormalized = true;
         let archiveChart = null;
 
