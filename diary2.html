@@ -1690,7 +1690,7 @@ function parseCSV(text) {
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
     return obj;
-  }).filter(e => e.Timestamp || e.Date);
+  }).filter(e => e.Timestamp || e.Date || e.Date_ISO);
 }
 
 function parseCSVLine(line) {
