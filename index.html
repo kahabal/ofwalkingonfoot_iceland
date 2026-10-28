@@ -1284,9 +1284,18 @@ function zoomBy(factor) {
   zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, factor, canvas);
 }
 
+// Opening view. On phones start at half size, centred sideways, so more of the circle shows.
 function resetZoom() {
-  zoomScale = 1; zoomTx = 0; zoomTy = 0;
-  applyZoom(document.getElementById('dial'));
+  const canvas = document.getElementById('dial');
+  const wrapW = document.getElementById('diary-canvas-wrap').clientWidth;
+  if(window.innerWidth <= 700) {
+    zoomScale = 0.5;
+    zoomTx = (wrapW - parseFloat(canvas.style.width) * zoomScale) / 2;
+  } else {
+    zoomScale = 1; zoomTx = 0;
+  }
+  zoomTy = 0;
+  applyZoom(canvas);
 }
 
 // ─────────────────────────────────────────────
@@ -1570,6 +1579,7 @@ async function diaryInit() {
   draw(days);
   captureStatic();
   setupCanvasEvents(document.getElementById('dial'), days);
+  resetZoom();
   requestAnimationFrame(animateLatest);
   setTimeout(()=>document.getElementById('loading-screen').classList.add('gone'),650);
 
