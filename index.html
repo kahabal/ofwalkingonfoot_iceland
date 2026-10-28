@@ -1278,7 +1278,7 @@ function resetZoom() {
 function setupCanvasEvents(canvas, days) {
   createTooltip();
 
-  canvas.addEventListener('mousemove', e => {
+  const onHover = e => {
     if(isPanning) return;
     const wrap = document.getElementById('diary-canvas-wrap');
     const wRect = wrap.getBoundingClientRect();
@@ -1383,7 +1383,8 @@ function setupCanvasEvents(canvas, days) {
       canvas.style.cursor = isPanning ? 'grabbing' : 'grab';
       hideTooltip();
     }
-  });
+  };
+  canvas.addEventListener('mousemove', onHover);
 
   canvas.addEventListener('mouseleave', () => {
     document.getElementById('dnp').classList.remove('show');
@@ -1442,9 +1443,16 @@ function setupCanvasEvents(canvas, days) {
   let touchStartDist = null;
   let touchStartScale = 1;
   let touchStartMid = { x:0, y:0 };
+  // Tap = one finger, short, barely moved. Phones have no hover, so a tap shows
+  // what hover shows; a second tap on the same note or pin opens it in the tracker.
+  let tapStart = null;
+  let tapTarget = null;
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    tapStart = e.touches.length === 1
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
+      : null;
     if(e.touches.length === 1) {
       isPanning = true;
       panStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -1460,6 +1468,8 @@ function setupCanvasEvents(canvas, days) {
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
+    if(tapStart && (e.touches.length > 1 ||
+       Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > 8)) tapStart = null;
     if(e.touches.length === 1 && isPanning) {
       zoomTx = panOrigin.tx + (e.touches[0].clientX - panStart.x);
       zoomTy = panOrigin.ty + (e.touches[0].clientY - panStart.y);
@@ -1477,9 +1487,31 @@ function setupCanvasEvents(canvas, days) {
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchend', () => {
+  canvas.addEventListener('touchend', e => {
     isPanning = false;
     touchStartDist = null;
+    if(!tapStart || e.touches.length > 0 || Date.now() - tapStart.t > 500) { tapStart = null; return; }
+    const t = e.changedTouches[0];
+    tapStart = null;
+
+    const wRect = document.getElementById('diary-canvas-wrap').getBoundingClientRect();
+    const mx = (t.clientX - wRect.left - zoomTx) / zoomScale;
+    const my = (t.clientY - wRect.top  - zoomTy) / zoomScale;
+    const near = h => Math.hypot(mx-h.x, my-h.y) <= h.r;
+    const noteHit = noteHitAreas.find(near);
+    const gpsHit  = noteHit ? null : gpsHitAreas.find(near);
+    const target  = noteHit ? 'note' + noteHit.dayNum : gpsHit ? 'gps' + gpsHit.dayNum : null;
+
+    if(target && target === tapTarget) {
+      tapTarget = null;
+      document.getElementById('dnp').classList.remove('show');
+      hideTooltip();
+      if(noteHit) openInTracker(noteHit.lat, noteHit.lon, noteHit.note, noteHit.dayNum, noteHit.date);
+      else if(gpsHit.lat && gpsHit.lon) openInTracker(gpsHit.lat, gpsHit.lon, null, gpsHit.dayNum, null);
+      return;
+    }
+    tapTarget = target;
+    onHover({ clientX: t.clientX, clientY: t.clientY });
   });
 
   document.addEventListener('wheel', e => {
