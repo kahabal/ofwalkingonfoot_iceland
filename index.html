@@ -802,6 +802,9 @@ let gpsHitAreas  = [];
 let latestGPSPos = null;
 let staticCanvas = null;
 let pulsePhase = 0;
+// Canvas pixels per CSS pixel. Twice the screen density so pinch-zoom stays sharp,
+// capped at 4096px per side (the largest canvas iOS Safari reliably draws).
+let dialRes = 1;
 
 function hexToRgba(hex, alpha) {
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
@@ -829,8 +832,11 @@ function draw(days) {
   const canvas = document.getElementById('dial');
   // Make canvas larger than viewport — circle can overflow
   const size = Math.max(window.innerWidth, window.innerHeight) * 1.1;
-  canvas.width = size; canvas.height = size;
+  dialRes = Math.min((window.devicePixelRatio || 1) * 2, 4096 / size);
+  canvas.width = Math.round(size * dialRes); canvas.height = Math.round(size * dialRes);
+  canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
   const ctx = canvas.getContext('2d');
+  ctx.setTransform(dialRes, 0, 0, dialRes, 0, 0);
   const cx = size/2, cy = size/2;
   const N = days.length;
 
@@ -1114,7 +1120,8 @@ function animateLatest() {
 
   // Restore static area
   ctx.clearRect(x-pad, y-pad, pad*2, pad*2);
-  ctx.drawImage(staticCanvas, x-pad,y-pad,pad*2,pad*2, x-pad,y-pad,pad*2,pad*2);
+  const r = dialRes;
+  ctx.drawImage(staticCanvas, (x-pad)*r,(y-pad)*r,pad*2*r,pad*2*r, x-pad,y-pad,pad*2,pad*2);
 
   // Outer pulse ring (slow, wide)
   ctx.beginPath();
@@ -1192,6 +1199,16 @@ function hideTooltip() {
   if(tooltipEl) tooltipEl.style.display = 'none';
 }
 
+// Neighbouring notes/pins have overlapping hit circles: pick the closest one, not the first
+function nearestHit(areas, mx, my) {
+  let best = null, bestD = Infinity;
+  for(const h of areas) {
+    const d = Math.hypot(mx-h.x, my-h.y);
+    if(d <= h.r && d < bestD) { best = h; bestD = d; }
+  }
+  return best;
+}
+
 // ─────────────────────────────────────────────
 // HIT DETECTION — ring + day under cursor
 // ─────────────────────────────────────────────
@@ -1199,7 +1216,7 @@ function hideTooltip() {
 let layoutParams = null;
 
 function getLayoutParams(canvas) {
-  const size = canvas.width;
+  const size = canvas.width / dialRes;
   const cx = size/2, cy = size/2;
   const innerR = size * 0.14;
   const outerR = size * 0.46;
@@ -1286,14 +1303,11 @@ function setupCanvasEvents(canvas, days) {
     // Map screen coords → canvas pixel coords, undoing the CSS translate+scale transform
     const localX = (e.clientX - wRect.left - zoomTx) / zoomScale;
     const localY = (e.clientY - wRect.top  - zoomTy) / zoomScale;
-    // canvas.width is always the raw pixel size (no CSS scaling applied to canvas itself)
+    // Hit areas are in CSS pixels; the canvas backing store is dialRes times larger
     const mx = localX;
     const my = localY;
 
-    const noteHit = noteHitAreas.find(h => {
-      const dx=mx-h.x, dy=my-h.y;
-      return Math.sqrt(dx*dx+dy*dy) <= h.r;
-    });
+    const noteHit = nearestHit(noteHitAreas, mx, my);
     if(noteHit) {
       canvas.style.cursor = 'pointer';
       const popup = document.getElementById('dnp');
@@ -1315,10 +1329,7 @@ function setupCanvasEvents(canvas, days) {
     }
     document.getElementById('dnp').classList.remove('show');
 
-    const gpsHit = gpsHitAreas.find(h => {
-      const dx=mx-h.x, dy=my-h.y;
-      return Math.sqrt(dx*dx+dy*dy) <= h.r;
-    });
+    const gpsHit = nearestHit(gpsHitAreas, mx, my);
     if(gpsHit) {
       canvas.style.cursor = 'pointer';
       showTooltip(`📍 Day ${gpsHit.dayNum} — click to open in map`, e.clientX, e.clientY);
@@ -1399,20 +1410,14 @@ function setupCanvasEvents(canvas, days) {
     const my = (e.clientY - wRect.top  - zoomTy) / zoomScale;
 
     // Note click → open tracker centered on that day's GPS with note
-    const noteHitClick = noteHitAreas.find(h => {
-      const dx=mx-h.x, dy=my-h.y;
-      return Math.sqrt(dx*dx+dy*dy) <= h.r;
-    });
+    const noteHitClick = nearestHit(noteHitAreas, mx, my);
     if(noteHitClick) {
       openInTracker(noteHitClick.lat, noteHitClick.lon, noteHitClick.note, noteHitClick.dayNum, noteHitClick.date);
       return;
     }
 
     // GPS click → open tracker centered on that pin
-    const gpsHit = gpsHitAreas.find(h => {
-      const dx=mx-h.x, dy=my-h.y;
-      return Math.sqrt(dx*dx+dy*dy) <= h.r;
-    });
+    const gpsHit = nearestHit(gpsHitAreas, mx, my);
     if(gpsHit && gpsHit.lat && gpsHit.lon) {
       openInTracker(gpsHit.lat, gpsHit.lon, null, gpsHit.dayNum, null);
     }
@@ -1497,9 +1502,8 @@ function setupCanvasEvents(canvas, days) {
     const wRect = document.getElementById('diary-canvas-wrap').getBoundingClientRect();
     const mx = (t.clientX - wRect.left - zoomTx) / zoomScale;
     const my = (t.clientY - wRect.top  - zoomTy) / zoomScale;
-    const near = h => Math.hypot(mx-h.x, my-h.y) <= h.r;
-    const noteHit = noteHitAreas.find(near);
-    const gpsHit  = noteHit ? null : gpsHitAreas.find(near);
+    const noteHit = nearestHit(noteHitAreas, mx, my);
+    const gpsHit  = noteHit ? null : nearestHit(gpsHitAreas, mx, my);
     const target  = noteHit ? 'note' + noteHit.dayNum : gpsHit ? 'gps' + gpsHit.dayNum : null;
 
     if(target && target === tapTarget) {
