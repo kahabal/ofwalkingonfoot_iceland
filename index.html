@@ -803,11 +803,16 @@ function dayFirstGPS(day) {
   return null;
 }
 
+// Every encounter of the day, from all its entries, each name once (first spelling wins)
 function dayAnimals(day) {
+  const seen = new Map();
   for(const e of day.entries){
-    if(e.Animals&&e.Animals.trim()) return e.Animals;
+    for(const a of (e.Animals || '').split(/[;,]/)){
+      const name = a.trim();
+      if(name && !seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+    }
   }
-  return null;
+  return seen.size ? [...seen.values()].join('; ') : null;
 }
 
 // The words behind the weather and terrain icons, for tooltips (same matching as dayValue)
