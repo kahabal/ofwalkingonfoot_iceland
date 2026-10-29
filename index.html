@@ -1775,30 +1775,22 @@ function scheduleMidnightRefresh() {
 }
 function initMap() {
   map = L.map('map', { zoomControl: true, attributionControl: true });
-  // Neutral grey base (no territorial-waters line in the sea), names as a separate layer
-  const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  L.tileLayer(ESRI + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  // Neutral grey base: no territorial-waters line in the sea
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors',
     maxNativeZoom: 16, maxZoom: 19
   }).addTo(map);
-  // Names above the route lines but under the markers, and never in the way of clicks
-  map.createPane('placeNames');
-  map.getPane('placeNames').style.zIndex = 450;
-  map.getPane('placeNames').style.pointerEvents = 'none';
-  const names = L.tileLayer(ESRI + 'World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-    pane: 'placeNames', maxNativeZoom: 16, maxZoom: 19
-  }).addTo(map);
   map.setView([64.9631, -19.0208], 6); // Iceland default
-  addGpsTracksLayer(names);
+  addGpsTracksLayer();
 }
 
 // Real GPS tracks of the walk (tracks.geojson: simplified once from the full KML, 10 m tolerance).
-// Drawn in its own pane under the diary lines and markers. Checkboxes for tracks and place names, both on by default.
-function addGpsTracksLayer(names) {
+// Drawn in its own pane under the diary lines and markers, with an on/off checkbox; on by default.
+function addGpsTracksLayer() {
   map.createPane('gpsTracks');
   map.getPane('gpsTracks').style.zIndex = 350;
   const layer = L.layerGroup().addTo(map);
-  L.control.layers(null, { 'GPS tracks': layer, 'Place names': names }, { collapsed: false, position: 'topright' }).addTo(map);
+  L.control.layers(null, { 'GPS tracks': layer }, { collapsed: false, position: 'topright' }).addTo(map);
   fetch('tracks.geojson', { cache: 'no-cache' })   // revalidate, so a rebuilt file shows up at once
     .then(r => r.json())
     .then(gj => L.geoJSON(gj, {
@@ -2044,7 +2036,7 @@ async function renderMap(byDay, days, dayNumMap) {
       } else {
         const icon = L.divIcon({
           className: '',
-          html: `<div class="day-marker" style="background:${color}">${dayNumMap ? dayNumMap[day] : dayIdx + 1}</div>`,
+          html: `<div class="day-marker" style="background:var(--accent)">${dayNumMap ? dayNumMap[day] : dayIdx + 1}</div>`,
           iconSize: [28, 28], iconAnchor: [14, 14]
         });
         marker = L.marker([lat, lon], { icon });
