@@ -187,6 +187,11 @@ body::before {
 #lightbox .lb-meta { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: #c8b99a; }
 #lightbox .lb-text { font-family: var(--font-read); font-size: 15px; margin-top: 2px; }
 #lightbox .lb-close { position: absolute; top: 8px; right: 12px; background: none; border: none; color: #f2ede3; font-size: 26px; cursor: pointer; }
+/* On computers the photo opens as a framed view, not full screen; phones keep the full-screen view */
+@media (min-width: 701px) {
+  #lightbox { background: rgba(26,22,18,.6); }
+  #lightbox img { max-width: min(900px, 80vw); max-height: 75vh; border: 6px solid var(--paper); box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+}
 .travel-icon { font-family: var(--font-emoji); font-size: 19px; line-height: 28px; text-align: center; background: var(--paper); border: 1px solid var(--border); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
