@@ -1790,7 +1790,7 @@ function addGpsTracksLayer() {
   map.getPane('gpsTracks').style.zIndex = 350;
   const layer = L.layerGroup().addTo(map);
   L.control.layers(null, { 'GPS tracks': layer }, { collapsed: false, position: 'topright' }).addTo(map);
-  fetch('tracks.geojson')
+  fetch('tracks.geojson', { cache: 'no-cache' })   // revalidate, so a rebuilt file shows up at once
     .then(r => r.json())
     .then(gj => L.geoJSON(gj, {
       pane: 'gpsTracks',
