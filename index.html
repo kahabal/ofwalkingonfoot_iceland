@@ -1676,8 +1676,21 @@ let dayColors = {};
 // from / to: times (HH:MM) of the diary entries where the ride starts and ends.
 const TRAVEL = [
   { date:'19/06/2026', from:'13:11', to:'21:30', mode:'bus' },
+  { date:'14/08/2026', from:'13:00', to:'15:00', mode:'ferry' },
 ];
-const TRAVEL_ICONS = { bus:'🚌' };
+// Rides between the last entry of one day and the first of the next.
+// via: points the line passes through (the icon sits on the first one).
+const TRAVEL_OVERNIGHT = [
+  { from:'24/08/2026', to:'25/08/2026', mode:'car', via:[[64.5383337, -21.920208]] }, // Langaholt → Borgarnes → Reykjavík
+];
+const TRAVEL_ICONS = { bus:'🚌', ferry:'⛴️', car:'🚗' };
+
+function addTravelIcon(latlng, mode) {
+  markers.push(L.marker(latlng, {
+    icon: L.divIcon({ className: 'travel-icon', html: TRAVEL_ICONS[mode] || '•', iconSize: [30, 30] }),
+    interactive: false
+  }).addTo(map));
+}
 
 function travelFor(day, a, b) {
   const ta = (a.Time || '').slice(0,5), tb = (b.Time || '').slice(0,5);
@@ -1931,7 +1944,13 @@ async function renderMap(byDay, days, dayNumMap) {
     // Connect previous day's last point to this day's first point (overnight walk line)
     if (dayIdx > 0) {
       const prevCoords = dayCoordMap[days[dayIdx - 1]];
-      if (prevCoords && prevCoords.length) {
+      const ride = TRAVEL_OVERNIGHT.find(t => t.from === days[dayIdx - 1] && t.to === day);
+      if (prevCoords && prevCoords.length && ride) {
+        markers.push(L.polyline([prevCoords[prevCoords.length - 1], ...ride.via, coords[0]], {
+          color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7'
+        }).addTo(map));
+        addTravelIcon(ride.via[0], ride.mode);
+      } else if (prevCoords && prevCoords.length) {
         const line = L.polyline([prevCoords[prevCoords.length - 1], coords[0]], {
           color: color, weight: 1.5, opacity: 0.35, dashArray: '5 7'
         }).addTo(map);
@@ -1956,11 +1975,7 @@ async function renderMap(byDay, days, dayNumMap) {
         flushWalk();
         const p = [toFloat(prev.Latitude), toFloat(prev.Longitude)];
         markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7' }).addTo(map));
-        const mid = [(p[0] + c[0]) / 2, (p[1] + c[1]) / 2];
-        markers.push(L.marker(mid, {
-          icon: L.divIcon({ className: 'travel-icon', html: TRAVEL_ICONS[trip.mode] || '•', iconSize: [30, 30] }),
-          interactive: false
-        }).addTo(map));
+        addTravelIcon([(p[0] + c[0]) / 2, (p[1] + c[1]) / 2], trip.mode);
       }
       walk.push(c);
     });
