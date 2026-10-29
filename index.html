@@ -416,7 +416,7 @@ const START_ANGLE = Math.PI * (210/180);
 const RINGS = [
   { key:'Note',          label:'Note',         icon:'✎',  color:'#b8a888', type:'note'       },
   { key:'_state',        label:'State',        icon:'🌀', color:'#8a88b8', type:'state'      }, // trance + loop + pain
-  { key:'Solitude',      label:'Solitude',     icon:'🚶', color:'#8a7a5a', type:'iconscale'  },
+  { key:'Solitude',      label:'Solitude',     icon:'🧘', color:'#8a7a5a', type:'iconscale'  },
   { key:'Tiredness',     label:'Tiredness',    icon:'😴', color:'#b07a52', type:'iconscale'  },
   { key:'Trolley',       label:'Trolley',      icon:'🏋️', color:'#c4a068', type:'iconscale'  },
   { key:'Pace',          label:'Pace',         icon:'👟', color:'#a07848', type:'pace'       },
@@ -433,7 +433,7 @@ const RINGS = [
 const LEVEL_ICONS = {
   Sleep_Quality: ['😵','😔','😐','😌','✨'],
   Tiredness:     ['🏃','🚶','😤','😓','💀'],
-  Cold:          ['🥵','😊','🧥','🥶','🧊'],
+  Cold:          ['🥵','🙂','😐','😬','🥶'],
   Wind_Scale:    ['🍃','🌬️','💨','🌪️','⛈️'],
   Solitude:      ['🧍','🧍','🧍','🧍','🧍'], // same icon, opacity varies in rendering
   Trolley:       ['2','3','3','4','5'],        // number shown next to weight icon
@@ -466,7 +466,7 @@ const SPECIAL_WEATHER = {
 const TERRAIN_ICONS = {
   'lava':'🪨', 'rock':'🪨', 'rocky':'🪨',
   'moss':'🌿', 'grass':'🌿', 'meadow':'🌿',
-  'sand':'🏖️', 'beach':'🏖️',
+  'sand':'🏜️', 'beach':'🏖️',
   'mud':'💧', 'bog':'💧', 'marsh':'💧',
   'snow':'❄️', 'ice':'❄️', 'glacier':'❄️',
   'asphalt':'🛣️', 'road':'🛣️', 'gravel':'🛣️',
@@ -1039,7 +1039,7 @@ function draw(days) {
         const { trance, loop, pain } = val;
         const stateIcons = [];
         if(trance) stateIcons.push('👁️');
-        if(loop)   stateIcons.push('🔁');
+        if(loop)   stateIcons.push('🌀');
         if(pain)   stateIcons.push('⚡');
         const count = stateIcons.length;
         if(count === 1) {
@@ -1087,9 +1087,16 @@ function draw(days) {
         const iy = cy + Math.sin(mid)*rMid;
 
         if(ring.key === 'Solitude') {
-          // Use icon per level, full opacity — no opacity encoding which hides data
-          const soloIcons = ['🌍','👥','🚶','🏔️','🌌'];
-          drawIcon(ctx, soloIcons[n-1] || '🚶', ix, iy, iconSize*1.05, 1);
+          // Same icon every day, level written next to it (like the trolley weight)
+          drawIcon(ctx, '🧘', ix, iy, iconSize, 1);
+          ctx.save();
+          ctx.globalAlpha = 1.0;
+          ctx.font = `bold ${Math.max(7, ringW*0.32)}px 'JetBrains Mono', monospace`;
+          ctx.fillStyle = ring.color;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(n, ix + iconSize*0.55, iy + iconSize*0.1);
+          ctx.restore();
 
         } else if(ring.key === 'Trolley') {
           drawIcon(ctx, '🏋️', ix, iy, iconSize, 1);
