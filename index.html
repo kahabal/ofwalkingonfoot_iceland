@@ -1676,6 +1676,7 @@ let dayColors = {};
 // from / to: times (HH:MM) of the diary entries where the ride starts and ends.
 const TRAVEL = [
   { date:'19/06/2026', from:'13:11', to:'21:30', mode:'bus' },
+  { date:'03/07/2026', from:'13:42', to:'17:30', mode:'car' },   // lift back to town after the 40 km hike
   { date:'14/08/2026', from:'13:00', to:'15:00', mode:'ferry' },
 ];
 // Rides between the last entry of one day and the first of the next.
@@ -1956,8 +1957,9 @@ async function renderMap(byDay, days, dayNumMap) {
         }).addTo(map));
         addTravelIcon(via[0] || [(a[0] + coords[0][0]) / 2, (a[1] + coords[0][1]) / 2], ride.mode);
       } else if (prevCoords && prevCoords.length) {
+        // Walked on from yesterday's last point: same solid line as within a day
         const line = L.polyline([prevCoords[prevCoords.length - 1], coords[0]], {
-          color: color, weight: 1.5, opacity: 0.35, dashArray: '5 7'
+          color: color, weight: 2.5, opacity: 0.75
         }).addTo(map);
         markers.push(line);
       }
