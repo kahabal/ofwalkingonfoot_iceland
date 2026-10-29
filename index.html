@@ -1072,7 +1072,8 @@ function draw(days) {
             const t = count===1 ? 0.5 : k/(count-1);
             const angle = mid - arcS*0.5 + t*arcS;
             const rOff = rMid + (ringW*0.12)*(k%2===0?1:-1);
-            const sz = count > 4 ? iconSize*0.75 : iconSize*0.90;
+            // Busy days get smaller icons so they overlap less inside the narrow slice
+            const sz = count > 4 ? iconSize*0.6 : count > 3 ? iconSize*0.75 : iconSize*0.90;
             drawIcon(ctx, ic, cx+Math.cos(angle)*rOff, cy+Math.sin(angle)*rOff, sz, 1);
           });
         }
