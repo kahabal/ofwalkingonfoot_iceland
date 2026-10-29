@@ -1670,10 +1670,16 @@ let allEntries = [];
 let map, routeLine, markers = [];
 let refreshTimer = null;
 let dayColors = {};
-const COLOR_PALETTE = [
-  '#2d5a8e','#7a4f2d','#3a6e4a','#8e3a2d','#4a7fa5',
-  '#6b5a8e','#8e6b2d','#2d8e6b','#8e2d5a','#5a8e2d'
-];
+// Day colour deepens along the trip: first day lighter blue, last day navy.
+// The light end keeps about 4.5:1 contrast with the white day numbers on the markers.
+const DAY_COLOR_FIRST = '#4e7aa8';
+const DAY_COLOR_LAST  = '#1b3557';
+function dayColorAt(t) {
+  const ch = (hex, i) => parseInt(hex.substr(1 + i*2, 2), 16);
+  return '#' + [0,1,2].map(i =>
+    Math.round(ch(DAY_COLOR_FIRST, i) * (1-t) + ch(DAY_COLOR_LAST, i) * t).toString(16).padStart(2, '0')
+  ).join('');
+}
 
 // ── INIT ───────────────────────────────────────────────
 function trackerInit() {
@@ -1845,7 +1851,7 @@ function render() {
   });
 
   // Assign colors per day
-  days.forEach((d, i) => { dayColors[d] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
+  days.forEach((d, i) => { dayColors[d] = dayColorAt(days.length > 1 ? i / (days.length - 1) : 0); });
 
   // Stats — days and last location only
   document.getElementById('stat-days').textContent = days.length;
