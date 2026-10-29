@@ -179,6 +179,14 @@ body::before {
 .leaflet-control-layers-expanded { padding: 4px 10px; }
 .leaflet-control-layers label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .leaflet-control-layers input { accent-color: #8e3a2d; }
+.photo-marker img { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); object-fit: cover; display: block; cursor: pointer; }
+#lightbox { display: none; position: fixed; inset: 0; z-index: 1200; background: rgba(26,22,18,.94); flex-direction: column; align-items: center; justify-content: center; padding: 16px; }
+#lightbox.open { display: flex; }
+#lightbox img { max-width: 100%; max-height: calc(100% - 70px); object-fit: contain; }
+#lightbox .lb-cap { margin-top: 10px; text-align: center; color: #f2ede3; }
+#lightbox .lb-meta { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: #c8b99a; }
+#lightbox .lb-text { font-family: var(--font-read); font-size: 15px; margin-top: 2px; }
+#lightbox .lb-close { position: absolute; top: 8px; right: 12px; background: none; border: none; color: #f2ede3; font-size: 26px; cursor: pointer; }
 .travel-icon { font-family: var(--font-emoji); font-size: 19px; line-height: 28px; text-align: center; background: var(--paper); border: 1px solid var(--border); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
@@ -333,6 +341,13 @@ body::before {
       <div id="foot">Of Walking on Foot · Iceland · Updates daily at midnight</div>
     </div>
   </div>
+</div>
+
+<!-- PHOTO LIGHTBOX (map) -->
+<div id="lightbox" onclick="if(event.target.id==='lightbox'||event.target.classList.contains('lb-close'))closeLightbox()">
+  <button class="lb-close" aria-label="Close">✕</button>
+  <img alt="">
+  <div class="lb-cap"><div class="lb-meta"></div><div class="lb-text"></div></div>
 </div>
 
 <!-- DETAIL MODAL (tracker) -->
@@ -1689,6 +1704,7 @@ let allEntries = [];
 let map, routeLine, markers = [];
 let refreshTimer = null;
 let dayColors = {};
+let layersControl = null;   // the map's checkbox box (GPS tracks, Photos)
 
 // Stretches not done on foot, drawn dotted on the map with an icon at the midpoint.
 // from / to: times (HH:MM) of the diary entries where the ride starts and ends.
@@ -1798,7 +1814,43 @@ function initMap() {
   }).addTo(map);
   map.setView([64.9631, -19.0208], 6); // Iceland default
   addGpsTracksLayer();
+  addPhotosLayer();
 }
+
+// Photos on the map: photos.json lists them, photos/ holds the web copies, photos/thumbs/ the round markers.
+// Above the day markers; a click opens the full photo in the lightbox.
+function addPhotosLayer() {
+  map.createPane('photos');
+  map.getPane('photos').style.zIndex = 650;
+  const layer = L.layerGroup().addTo(map);
+  layersControl.addOverlay(layer, 'Photos');
+  fetch('photos.json', { cache: 'no-cache' })
+    .then(r => r.json())
+    .then(list => list.forEach(p => {
+      L.marker([p.lat, p.lon], {
+        pane: 'photos',
+        icon: L.divIcon({ className: 'photo-marker', html: `<img src="photos/thumbs/${p.id}.jpg" alt="">`, iconSize: [48, 48] })
+      }).on('click', () => openLightbox(p)).addTo(layer);
+    }))
+    .catch(() => {});
+}
+
+function openLightbox(p) {
+  const box = document.getElementById('lightbox');
+  box.querySelector('img').src = `photos/${p.id}.jpg`;
+  const day = allEntries.length ? groupByDay(allEntries).find(d => d.date === p.date) : null;
+  box.querySelector('.lb-meta').textContent =
+    [day ? `Day ${day.dayNum}` : '', formatDate(p.date), p.time].filter(Boolean).join(' · ');
+  box.querySelector('.lb-text').textContent = p.caption || '';
+  box.classList.add('open');
+}
+
+function closeLightbox() {
+  const box = document.getElementById('lightbox');
+  box.classList.remove('open');
+  box.querySelector('img').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 // Real GPS tracks of the walk (tracks.geojson: simplified once from the full KML, 10 m tolerance).
 // Drawn in its own pane under the diary lines and markers, with an on/off checkbox; on by default.
@@ -1806,7 +1858,7 @@ function addGpsTracksLayer() {
   map.createPane('gpsTracks');
   map.getPane('gpsTracks').style.zIndex = 350;
   const layer = L.layerGroup().addTo(map);
-  L.control.layers(null, { 'GPS tracks': layer }, { collapsed: false, position: 'topright' }).addTo(map);
+  layersControl = L.control.layers(null, { 'GPS tracks': layer }, { collapsed: false, position: 'topright' }).addTo(map);
   fetch('tracks.geojson', { cache: 'no-cache' })   // revalidate, so a rebuilt file shows up at once
     .then(r => r.json())
     .then(gj => L.geoJSON(gj, {
