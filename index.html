@@ -456,6 +456,11 @@ const WEATHER_ICONS = {
   'wind':'🌬️', 'windy':'🌬️',
 };
 
+// Days whose weather slot shows a special icon instead of the day's weather
+const SPECIAL_WEATHER = {
+  '12/08/2026': { icon:'🌑', text:'Solar eclipse' },
+};
+
 // Terrain keyword → icon
 const TERRAIN_ICONS = {
   'lava':'🪨', 'rock':'🪨', 'rocky':'🪨',
@@ -724,6 +729,7 @@ function dayValue(day, ring) {
     return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
   }
   if (ring.type === 'wxicon') {
+    if(SPECIAL_WEATHER[day.date]) return SPECIAL_WEATHER[day.date].icon;
     // Return the weather icon string directly, not a number
     for(const e of ee) {
       const w = e['Weather'] || e['Weather_Auto'] || '';
@@ -801,13 +807,16 @@ function dayAnimals(day) {
 
 // The words behind the weather and terrain icons, for tooltips (same matching as dayValue)
 function dayWeatherText(day) {
+  let text = null;
   for(const e of day.entries) {
     const w = e['Weather'] || e['Weather_Auto'] || '';
     if(!w) continue;
     const wl = w.toLowerCase();
-    if(Object.keys(WEATHER_ICONS).some(k => wl.includes(k))) return w.trim();
+    if(Object.keys(WEATHER_ICONS).some(k => wl.includes(k))) { text = w.trim(); break; }
   }
-  return null;
+  const special = SPECIAL_WEATHER[day.date];
+  if(special) return text ? `${special.text}, ${text}` : special.text;
+  return text;
 }
 
 function dayTerrainText(day) {
