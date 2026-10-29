@@ -175,6 +175,7 @@ body::before {
 .popup-note { font-family: var(--font-read); font-size: 15px; line-height: 1.5; color: var(--ink); margin-top: 6px; }
 .detail-note { font-family: var(--font-read); font-size: 16px; line-height: 1.6; color: var(--ink); }
 .day-marker { width: 26px; height: 26px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: white; box-shadow: 0 2px 5px rgba(0,0,0,.3); }
+.travel-icon { font-family: var(--font-emoji); font-size: 19px; line-height: 28px; text-align: center; background: var(--paper); border: 1px solid var(--border); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
 #log-col { overflow-y: scroll; height: 100%; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
@@ -1670,6 +1671,18 @@ let allEntries = [];
 let map, routeLine, markers = [];
 let refreshTimer = null;
 let dayColors = {};
+
+// Stretches not done on foot, drawn dotted on the map with an icon at the midpoint.
+// from / to: times (HH:MM) of the diary entries where the ride starts and ends.
+const TRAVEL = [
+  { date:'19/06/2026', from:'13:11', to:'21:30', mode:'bus' },
+];
+const TRAVEL_ICONS = { bus:'🚌' };
+
+function travelFor(day, a, b) {
+  const ta = (a.Time || '').slice(0,5), tb = (b.Time || '').slice(0,5);
+  return TRAVEL.find(t => t.date === day && ta >= t.from && tb <= t.to) || null;
+}
 // Day colour deepens along the trip: first day lighter blue, last day navy.
 // The light end keeps about 4.5:1 contrast with the white day numbers on the markers.
 const DAY_COLOR_FIRST = '#4e7aa8';
@@ -1926,13 +1939,32 @@ async function renderMap(byDay, days, dayNumMap) {
       }
     }
 
-    // Within-day segments (solid, colour = day colour)
-    if (coords.length >= 2) {
-      const line = L.polyline(coords, {
-        color: color, weight: 2.5, opacity: 0.75
-      }).addTo(map);
-      markers.push(line);
-    }
+    // Within-day segments: solid on foot, dotted with an icon where TRAVEL says so
+    const located = [...byDay[day]]
+      .sort((a, b) => (a.Timestamp || '').localeCompare(b.Timestamp || ''))
+      .filter(e => !isNaN(toFloat(e.Latitude)) && !isNaN(toFloat(e.Longitude)));
+    let walk = [];
+    const flushWalk = () => {
+      if (walk.length >= 2) markers.push(L.polyline(walk, { color: color, weight: 2.5, opacity: 0.75 }).addTo(map));
+      walk = [];
+    };
+    located.forEach((e, i) => {
+      const c = [toFloat(e.Latitude), toFloat(e.Longitude)];
+      const prev = located[i - 1];
+      const trip = prev ? travelFor(day, prev, e) : null;
+      if (trip) {
+        flushWalk();
+        const p = [toFloat(prev.Latitude), toFloat(prev.Longitude)];
+        markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7' }).addTo(map));
+        const mid = [(p[0] + c[0]) / 2, (p[1] + c[1]) / 2];
+        markers.push(L.marker(mid, {
+          icon: L.divIcon({ className: 'travel-icon', html: TRAVEL_ICONS[trip.mode] || '•', iconSize: [30, 30] }),
+          interactive: false
+        }).addTo(map));
+      }
+      walk.push(c);
+    });
+    flushWalk();
   });
 
   // Place markers on top of lines
