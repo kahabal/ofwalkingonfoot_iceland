@@ -1829,13 +1829,26 @@ function addPhotosLayer() {
   map.getPane('photos').style.zIndex = 650;
   const layer = L.layerGroup().addTo(map);
   layersControl.addOverlay(layer, 'Photos');
+  // Thumbnails sit up and to the right of where the photo was taken, so the day marker under that
+  // spot stays visible; a small dot marks the exact place. Photos within 40 m of each other fan out.
+  const spots = [];
   fetch('photos.json', { cache: 'no-cache' })
     .then(r => r.json())
     .then(list => list.forEach(p => {
-      L.marker([p.lat, p.lon], {
+      let spot = spots.find(s => map.distance([s.lat, s.lon], [p.lat, p.lon]) < 40);
+      if (!spot) {
+        spot = { lat: p.lat, lon: p.lon, n: 0 };
+        spots.push(spot);
+        L.circleMarker([p.lat, p.lon], {
+          pane: 'photos', radius: 3, weight: 1.5, color: '#fff', fillColor: '#2a2118', fillOpacity: 1, interactive: false
+        }).addTo(layer);
+      }
+      L.marker([spot.lat, spot.lon], {
         pane: 'photos',
-        icon: L.divIcon({ className: 'photo-marker', html: `<img src="photos/thumbs/${p.id}.jpg" alt="">`, iconSize: [48, 48] })
+        icon: L.divIcon({ className: 'photo-marker', html: `<img src="photos/thumbs/${p.id}.jpg" alt="">`,
+                          iconSize: [48, 48], iconAnchor: [-8 - spot.n * 52, 56] })
       }).on('click', () => openLightbox(p)).addTo(layer);
+      spot.n++;
     }))
     .catch(() => {});
 }
