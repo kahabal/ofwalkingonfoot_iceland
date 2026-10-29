@@ -280,8 +280,8 @@ body::before {
 <!-- SHARED HEADER -->
 <div id="site-header">
   <div id="title-block">
-    <span class="author-name">Of Walking on Foot - Dario J Laganà</span>
-    <h1>A field diary for "Iceland: A Loud Solitude" (2026)</h1>
+    <span class="author-name">Of Walking on Foot - Dario J Laganà (2026)</span>
+    <h1>A field diary for "Iceland: A Loud Solitude"</h1>
   </div>
   <div id="tabs">
     <button class="tab-btn active" id="tab-diary" onclick="switchTab('diary')">
@@ -836,6 +836,7 @@ function animalIcons(str) {
 // ─────────────────────────────────────────────
 let noteHitAreas = [];
 let gpsHitAreas  = [];
+let dayLabelHitAreas = [];
 let latestGPSPos = null;
 let staticCanvas = null;
 let pulsePhase = 0;
@@ -883,6 +884,7 @@ function draw(days) {
 
   noteHitAreas = [];
   gpsHitAreas  = [];
+  dayLabelHitAreas = [];
   latestGPSPos = null;
 
   ctx.clearRect(0,0,size,size);
@@ -1112,6 +1114,7 @@ function draw(days) {
       }
       ctx.fillText(String(dayIdx+1), 0, 0);
       ctx.restore();
+      dayLabelHitAreas.push({x:lx, y:ly, r:ringW*0.5, dayNum:day.dayNum, date:day.date});
     }
   });
 
@@ -1383,6 +1386,13 @@ function setupCanvasEvents(canvas, days) {
     if(gpsHit) {
       canvas.style.cursor = 'pointer';
       showTooltip(`Location: open in map · Day ${gpsHit.dayNum}`, e.clientX, e.clientY);
+      return;
+    }
+
+    const labelHit = nearestHit(dayLabelHitAreas, mx, my);
+    if(labelHit) {
+      canvas.style.cursor = 'default';
+      showTooltip(`Day ${labelHit.dayNum}: ${formatDate(labelHit.date)}`, e.clientX, e.clientY);
       return;
     }
 
