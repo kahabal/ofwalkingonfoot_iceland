@@ -280,7 +280,7 @@ body::before {
 <!-- SHARED HEADER -->
 <div id="site-header">
   <div id="title-block">
-    <span class="author-name">Dario J Laganà</span>
+    <span class="author-name">Of Walking on Foot - Dario J Laganà</span>
     <h1>A field diary for "Iceland: A Loud Solitude" (2026)</h1>
   </div>
   <div id="tabs">
@@ -795,6 +795,30 @@ function dayFirstGPS(day) {
 function dayAnimals(day) {
   for(const e of day.entries){
     if(e.Animals&&e.Animals.trim()) return e.Animals;
+  }
+  return null;
+}
+
+// The words behind the weather and terrain icons, for tooltips (same matching as dayValue)
+function dayWeatherText(day) {
+  for(const e of day.entries) {
+    const w = e['Weather'] || e['Weather_Auto'] || '';
+    if(!w) continue;
+    const wl = w.toLowerCase();
+    if(Object.keys(WEATHER_ICONS).some(k => wl.includes(k))) return w.trim();
+  }
+  return null;
+}
+
+function dayTerrainText(day) {
+  for(const e of day.entries) {
+    const t = e['Terrain'] || '';
+    if(!t.trim()) continue;
+    for(const p of t.split(/[;,]/)) {
+      const pl = p.trim().toLowerCase();
+      if(Object.keys(TERRAIN_ICONS).some(k => pl.includes(k))) return p.trim();
+    }
+    return t.trim();
   }
   return null;
 }
@@ -1358,7 +1382,7 @@ function setupCanvasEvents(canvas, days) {
     const gpsHit = nearestHit(gpsHitAreas, mx, my);
     if(gpsHit) {
       canvas.style.cursor = 'pointer';
-      showTooltip(`📍 Day ${gpsHit.dayNum} — click to open in map`, e.clientX, e.clientY);
+      showTooltip(`Location: open in map · Day ${gpsHit.dayNum}`, e.clientX, e.clientY);
       return;
     }
 
@@ -1371,8 +1395,6 @@ function setupCanvasEvents(canvas, days) {
       if(val !== null) {
         if(hit.ring.type === 'iconscale' || hit.ring.type === 'pace') {
           const n = Math.max(1, Math.min(5, Math.round(val)));
-          const levelMap = LEVEL_ICONS[hit.ring.key] || LEVEL_ICONS['Pace'];
-          const icon = levelMap ? levelMap[n-1] : '';
           const VERBAL = {
             Sleep_Quality: ['terrible sleep','poor sleep','okay sleep','good sleep','excellent sleep'],
             Tiredness:     ['fresh','slightly tired','tired','very tired','exhausted'],
@@ -1383,39 +1405,39 @@ function setupCanvasEvents(canvas, days) {
             Pace:          ['very slow','slow','normal pace','fast','hype pace'],
           };
           if(hit.ring.key === 'Solitude') {
-            valStr = ` · 🧍 ${VERBAL.Solitude[n-1]}`;
+            valStr = VERBAL.Solitude[n-1];
           } else if(hit.ring.key === 'Trolley') {
-            valStr = ` · 🏋️ ${n} — ${VERBAL.Trolley[n-1]}`;
+            valStr = `${n}, ${VERBAL.Trolley[n-1]}`;
           } else {
             const verbal = VERBAL[hit.ring.key];
-            valStr = ` · ${icon} ${n}/5 — ${verbal ? verbal[n-1] : ''}`;
+            valStr = verbal ? `${n}/5, ${verbal[n-1]}` : `${n}/5`;
           }
         } else if(hit.ring.type === 'wxicon') {
-          valStr = ` · ${val}`;
+          valStr = dayWeatherText(hit.day);
         } else if(hit.ring.type === 'terrain') {
-          valStr = ` · ${val}`;
+          valStr = dayTerrainText(hit.day);
         } else if(hit.ring.type === 'state') {
           const parts = [];
-          if(val.trance) parts.push('👁️ Trance');
-          if(val.loop)   parts.push('🔁 Mind loop');
-          if(val.pain)   parts.push('⚡ Pain');
-          valStr = ' · ' + parts.join(', ');
+          if(val.trance) parts.push('Trance');
+          if(val.loop)   parts.push('Mind loop');
+          if(val.pain)   parts.push('Pain');
+          valStr = parts.join(', ');
         } else if(hit.ring.type === 'encounters') {
           const parts = [];
-          if(val.humans) parts.push('👥 humans');
-          if(val.animStr) parts.push(val.animStr);
-          valStr = ' · ' + parts.join(', ');
+          if(val.humans) parts.push('Humans');
+          if(val.animStr) parts.push(val.animStr.split(/[;,]/).map(a=>a.trim()).filter(Boolean).join(', '));
+          valStr = parts.join(', ');
         } else if(hit.ring.type === 'gps') {
-          valStr = ' · location recorded';
+          valStr = 'location recorded';
         } else if(hit.ring.type === 'note') {
-          valStr = ' · has note';
+          valStr = 'has note';
         } else {
-          valStr = ' · yes';
+          valStr = 'yes';
         }
       } else {
-        valStr = ' · not recorded';
+        valStr = 'not recorded';
       }
-      showTooltip(`${hit.ring.icon} ${label}${valStr} · Day ${hit.day.dayNum}`, e.clientX, e.clientY);
+      showTooltip(`${label}: ${valStr} · Day ${hit.day.dayNum}`, e.clientX, e.clientY);
     } else {
       canvas.style.cursor = isPanning ? 'grabbing' : 'grab';
       hideTooltip();
