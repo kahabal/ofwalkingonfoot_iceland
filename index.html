@@ -1679,8 +1679,9 @@ const TRAVEL = [
   { date:'14/08/2026', from:'13:00', to:'15:00', mode:'ferry' },
 ];
 // Rides between the last entry of one day and the first of the next.
-// via: points the line passes through (the icon sits on the first one).
+// via (optional): points the line passes through; the icon sits on the first one, else at the midpoint.
 const TRAVEL_OVERNIGHT = [
+  { from:'06/08/2026', to:'07/08/2026', mode:'car' },                                    // lift through the tunnel
   { from:'24/08/2026', to:'25/08/2026', mode:'car', via:[[64.5383337, -21.920208]] }, // Langaholt → Borgarnes → Reykjavík
 ];
 const TRAVEL_ICONS = { bus:'🚌', ferry:'⛴️', car:'🚗' };
@@ -1946,10 +1947,11 @@ async function renderMap(byDay, days, dayNumMap) {
       const prevCoords = dayCoordMap[days[dayIdx - 1]];
       const ride = TRAVEL_OVERNIGHT.find(t => t.from === days[dayIdx - 1] && t.to === day);
       if (prevCoords && prevCoords.length && ride) {
-        markers.push(L.polyline([prevCoords[prevCoords.length - 1], ...ride.via, coords[0]], {
+        const a = prevCoords[prevCoords.length - 1], via = ride.via || [];
+        markers.push(L.polyline([a, ...via, coords[0]], {
           color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7'
         }).addTo(map));
-        addTravelIcon(ride.via[0], ride.mode);
+        addTravelIcon(via[0] || [(a[0] + coords[0][0]) / 2, (a[1] + coords[0][1]) / 2], ride.mode);
       } else if (prevCoords && prevCoords.length) {
         const line = L.polyline([prevCoords[prevCoords.length - 1], coords[0]], {
           color: color, weight: 1.5, opacity: 0.35, dashArray: '5 7'
