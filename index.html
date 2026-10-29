@@ -2026,8 +2026,8 @@ function renderLog(byDay, days, dayNumMap) {
     heading.onclick = () => entriesDiv.classList.toggle('collapsed');
     group.appendChild(heading);
 
-    // Entries — most recent first within day
-    [...entries].reverse().forEach(e => {
+    // Entries — morning to night within the day (days themselves stay newest first)
+    [...entries].sort((a, b) => (a.Timestamp || '').localeCompare(b.Timestamp || '')).forEach(e => {
       const el = document.createElement('div');
       el.className = 'entry';
       el.onclick = () => openDetail(e);
