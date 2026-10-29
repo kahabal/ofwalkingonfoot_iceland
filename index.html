@@ -183,8 +183,6 @@ body::before {
 #log-col::-webkit-scrollbar-track { background: transparent; }
 #log-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 #log-col::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-#log-header { padding: 12px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--paper); z-index: 10; }
-#log-header h2 { font-size: 15px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
 .day-group { border-bottom: 2px solid var(--border); }
 .day-heading { padding: 13px 18px 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; background: var(--paper2); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
 .day-heading:hover { background: #e5e0d2; }
@@ -260,7 +258,6 @@ body::before {
   .stat-num { font-size: 20px; }
   #tracker-layout { grid-template-rows: 33vh 1fr; }
   #map-col { border-right: none; border-bottom: 1px solid var(--border); }
-  #log-header { padding: 10px 16px; }
   .day-heading { padding: 12px 16px 10px; flex-wrap: wrap; }
   .entry { padding: 12px 16px; }
   #detail-modal { padding: 10px; }
@@ -328,7 +325,6 @@ body::before {
   <div id="tracker-layout">
     <div id="map-col"><div id="map"></div></div>
     <div id="log-col">
-      <div id="log-header"><h2>Field Diary</h2></div>
       <div id="log-list"></div>
       <div id="foot">Of Walking on Foot · Iceland · Updates daily at midnight</div>
     </div>
@@ -1588,7 +1584,8 @@ function setupCanvasEvents(canvas, days) {
     onHover({ clientX: t.clientX, clientY: t.clientY });
   });
 
-  document.addEventListener('wheel', e => {
+  // Only the radial's own area: elsewhere (the Field Diary list) the wheel scrolls normally
+  document.getElementById('diary-canvas-wrap').addEventListener('wheel', e => {
     e.preventDefault();
     zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.9, canvas);
   }, { passive: false });
