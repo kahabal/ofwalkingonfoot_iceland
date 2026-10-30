@@ -2257,6 +2257,7 @@ function render() {
     // Use stored dayNum if available, else sequential index
     const storedNum = parseInt(byDay[d][0]?.dayNum);
     dayNumMap[d] = storedNum || (i + 1);
+    byDay[d].forEach(e => { e._dayNum = dayNumMap[d]; }); // for the detail window title
   });
 
   // Assign colors per day
@@ -2667,9 +2668,8 @@ function buildFieldTags(e) {
 // ── DETAIL MODAL ───────────────────────────────────────
 function openDetail(e) {
   const modal = document.getElementById('detail-modal');
-  const weatherIcon = getWeatherIcon(e.Weather_Auto || e.Weather || '');
 
-  document.getElementById('detail-title').textContent = `${weatherIcon} ${e.Weather_Auto || e.Weather || 'Entry'}`;
+  document.getElementById('detail-title').textContent = e._dayNum ? `Day ${e._dayNum}` : 'Entry';
   document.getElementById('detail-sub').textContent = `${e.Date || ''} · ${e.Time || ''} · ${e.Latitude ? toFloat(e.Latitude).toFixed(4)+', '+toFloat(e.Longitude).toFixed(4) : 'No GPS'}`;
 
   const body = document.getElementById('detail-body');
