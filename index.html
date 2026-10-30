@@ -1975,8 +1975,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbo
 
 // ── BIOMETRICS TAB ─────────────────────────────────────
 // Same content as iceland_biometrics.html (cards, layer toggles, chart), but reading the Sheet's
-// Biometrics tab and drawn in the diary's colours. Cards marked `fixed` are values that are not in
-// the daily data; they are kept as they were on the original page.
+// Biometrics tab and drawn in the diary's colours. Cards marked `fixed` keep the figures of the original
+// page (published totals, and records that are not in the daily data); the rest come from the Sheet.
 const BIO_METRICS = {
   cardio_load:         { col: 'Cardio_Load',    label: 'Cardio load',          color: '#2d7a7a', fmt: v => v.toFixed(2) },
   steps:               { col: 'Steps',          label: 'Steps',                color: '#b0662a', fmt: (v, d) => `${Math.round(v).toLocaleString('en-GB')} (${d.distance_km != null ? d.distance_km.toFixed(1) : '0'} km)` },
@@ -2015,20 +2015,18 @@ async function bioInit() {
 }
 
 function bioRenderCards() {
-  const sum = k => bioData.reduce((a, d) => a + (d[k] || 0), 0);
-  const vals = k => bioData.map(d => d[k]).filter(x => x != null);
-  const max = k => Math.max(...vals(k));
-  const avg = k => { const v = vals(k); return v.reduce((a, b) => a + b, 0) / v.length; };
+  const max = k => Math.max(...bioData.map(d => d[k]).filter(x => x != null));
   const n = (x, dec = 0) => x.toLocaleString('en-GB', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   const short = s => { const [d, m] = s.split('/'); return new Date(2026, m - 1, d).toLocaleDateString('en-GB', { month: 'short', day: '2-digit' }); };
   const cards = [
-    ['Total distance',  n(sum('distance_km')), 'km',     `Max day: ${n(max('distance_km'), 1)} km`, '#4f8a6e'],
-    ['Total steps',     n(sum('steps')), '',             `Max day: ${n(max('steps'))}`, BIO_METRICS.steps.color],
-    ['Total calories',  n(sum('total_calories_kcal')), 'kcal', 'Basal + active TEE', BIO_METRICS.total_calories_kcal.color],
-    ['Vertical gain',   n(sum('gain_meters')), 'm',      `Max day: ${n(max('gain_meters'))} m`, BIO_METRICS.gain_meters.color],
+    // Totals and averages: the published figures (the trip is "3,200 km"), not recalculated from the daily rows
+    ['Total distance',  '3,208', 'km',                   `Max day: ${n(max('distance_km'), 1)} km`, '#4f8a6e'],               // fixed
+    ['Total steps',     '4,348,746', '',                 `Max day: ${n(max('steps'))}`, BIO_METRICS.steps.color],              // fixed
+    ['Total calories',  '425,813', 'kcal',               'Basal + active TEE', BIO_METRICS.total_calories_kcal.color],         // fixed
+    ['Vertical gain',   '22,116', 'm',                   `Max day: ${n(max('gain_meters'))} m`, BIO_METRICS.gain_meters.color], // fixed
     ['Peak heart rate', '198.0', 'BPM',                  'Max peak (Aug 04)', BIO_METRICS.avg_walking_hr.color],             // fixed
-    ['Avg walking HR',  n(avg('avg_walking_hr'), 1), 'BPM', 'Aerobic baseline', BIO_METRICS.avg_walking_hr.color],
-    ['Avg sleep score', n(avg('sleep_score'), 1), '/100', `Peak: ${n(max('sleep_score'))} / 100`, BIO_METRICS.sleep_score.color],
+    ['Avg walking HR',  '106.8', 'BPM',                  'Aerobic baseline', BIO_METRICS.avg_walking_hr.color],              // fixed
+    ['Avg sleep score', '76.4', '/100',                  `Peak: ${n(max('sleep_score'))} / 100`, BIO_METRICS.sleep_score.color], // fixed
     ['Coldest dip',     '10.9', '°C',                    'Peak cold (July 29)', BIO_METRICS.cardio_load.color],              // fixed
     ['Max altitude',    n(max('gain_meters')), 'm',      'Peak single ascent', BIO_METRICS.gain_meters.color],
     ['Max activity',    '15.5', 'hrs/day',               'Peak duration', BIO_METRICS.cardio_load.color],                    // fixed
