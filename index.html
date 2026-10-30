@@ -1209,13 +1209,18 @@ function draw(days) {
         }
 
       } else if(ring.type === 'km') {
-        // Daily distance from the Biometrics tab, rounded
+        // Daily distance from the Biometrics tab, rounded, with a small "km" under it; 50 km+ days drawn bigger
+        const big = val >= 50;
+        const numSize = Math.max(7, ringW * (big ? 0.46 : 0.34));
+        const kx = cx + Math.cos(mid)*rMid, ky = cy + Math.sin(mid)*rMid;
         ctx.save();
-        ctx.font = `bold ${Math.max(7, ringW*0.34)}px 'JetBrains Mono', monospace`;
         ctx.fillStyle = ring.color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(Math.round(val), cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid);
+        ctx.font = `bold ${numSize}px 'JetBrains Mono', monospace`;
+        ctx.fillText(Math.round(val), kx, ky - numSize*0.25);
+        ctx.font = `${Math.max(5, ringW*0.2)}px 'JetBrains Mono', monospace`;
+        ctx.fillText('km', kx, ky + numSize*0.55);
         ctx.restore();
 
       } else {
