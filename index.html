@@ -272,6 +272,13 @@ body::before {
             animation: enc-text 3.5s ease both; }
 @keyframes enc-pop { 0% { transform: scale(0) translateY(10px); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes enc-text { 0%, 15% { opacity: 0; } 25%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.play-pic { position: absolute; right: 12px; bottom: 28px; width: 150px; height: 200px; z-index: 1000; pointer-events: none;
+            border: 3px solid #8e3a2d; border-radius: 4px; background: #8e3a2d; overflow: hidden; box-shadow: 2px 2px 0 rgba(0,0,0,.15);
+            opacity: 0; transition: opacity .4s ease; }
+.play-pic.show { opacity: 1; }
+.play-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s ease; }
+.play-pic img.on { opacity: 1; }
+@media (max-width: 600px) { .play-pic { width: 84px; height: 112px; } }
 .play-km { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; pointer-events: none;
            background: #8e3a2d; color: #fff; font-family: var(--font-mono); font-size: 20px; padding: 6px 16px; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,.15); }
 #detail-nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
@@ -1954,7 +1961,7 @@ function addPhotosLayer() {
   const spots = [];
   fetch('photos.json', { cache: 'no-cache' })
     .then(r => r.json())
-    .then(list => list.forEach(p => {
+    .then(list => (photosList = list).forEach(p => {
       let spot = spots.find(s => map.distance([s.lat, s.lon], [p.lat, p.lon]) < 40);
       if (!spot) {
         spot = { lat: p.lat, lon: p.lon, n: 0 };
@@ -2171,7 +2178,7 @@ const PLAY_MS = 60000, PLAY_ZOOM = 8;
 const PLAY_HOLD_MS = 2500;   // pause on the arrival before the map goes back to normal
 const PLAY_TOTAL_KM = 3208;  // the published total the km counter ends on (same as the Biometrics tab)
 const dateKey = s => (s || '').split('/').reverse().join('');   // DD/MM/YYYY → YYYYMMDD, sortable
-let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, play = null;
+let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, photosList = [], play = null;
 
 // The Play button appears only once both the GPS tracks and the diary entries are on the map
 const playReady = { tracks: false, entries: false, shown: false };
@@ -2193,6 +2200,18 @@ function addPlayControl() {
 
 const PLAY_LINE = { pane: 'gpsTracks', color: '#8e3a2d', weight: 3, opacity: 0.9, interactive: false };
 const PLAY_GAP  = { ...PLAY_LINE, weight: 2.5, dashArray: '2 7' };   // rides and other jumps between tracks
+
+// Distance along the Play route where something at pt, at time key (YYYYMMDDHH:MM), is passed:
+// the route point closest to it, on the stretches whose time span holds it (a track runs until
+// the next one starts), else on that day, else where the route next goes on
+function playRouteAt(segs, pt, key) {
+  let cands = segs.filter(s => s.key <= key && key <= s.until);
+  if (!cands.length) cands = segs.filter(s => s.key.startsWith(key.slice(0, 8)));
+  if (!cands.length) cands = segs.filter(s => s.key > key).slice(0, 1);
+  let at = Infinity, best = Infinity;
+  cands.forEach(s => s.pts.forEach((q, i) => { const m = q.distanceTo(pt); if (m < best) { best = m; at = s.from + s.cum[i]; } }));
+  return at;
+}
 
 function startPlay() {
   if (!gpsTracksData || play) return;
@@ -2255,23 +2274,25 @@ function startPlay() {
       if (near) pt = L.latLng(toFloat(near.Latitude), toFloat(near.Longitude));
     }
     if (!pt) return null;
-    // Where it pops: the point of the route closest to it, on the stretches whose time span holds it
-    // (a track runs until the next one starts), else on that day, else where the route next goes on
-    const key = dateKey(r.Date) + time;
-    let cands = segs.filter(s => s.key <= key && key <= s.until);
-    if (!cands.length) cands = segs.filter(s => s.key.startsWith(dateKey(r.Date)));
-    if (!cands.length) cands = segs.filter(s => s.key > key).slice(0, 1);
-    let at = Infinity, best = Infinity;
-    cands.forEach(s => s.pts.forEach((q, i) => { const m = q.distanceTo(pt); if (m < best) { best = m; at = s.from + s.cum[i]; } }));
-    return { pt, at, icon: r.Icon, text: r.Text || '' };
+    return { pt, at: playRouteAt(segs, pt, dateKey(r.Date) + time), icon: r.Icon, text: r.Text || '' };
   }).filter(Boolean);
+  // One photo per day for the thumbnail: the captioned one if there is one, else the middle one of the day
+  const byDate = {};
+  photosList.forEach(ph => (byDate[ph.date] = byDate[ph.date] || []).push(ph));
+  const pics = Object.values(byDate).map(list => {
+    const ph = list.find(x => x.caption) || list[Math.floor(list.length / 2)];
+    return { src: `photos/${ph.id}.jpg`, at: playRouteAt(segs, L.latLng(ph.lat, ph.lon), dateKey(ph.date) + ph.time) };
+  }).sort((a, b) => a.at - b.at);
   play = { segs, total, walked, si: 0, phase: 'fade', t0: performance.now(), start: 0,
-           view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides, encounters,
+           view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides, encounters, pics, pi: -1,
            drawn: null, line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
   play.km = L.DomUtil.create('div', 'play-km', map.getContainer());
   play.km.textContent = '0 km';
+  // Photo thumbnail, bottom right: two stacked images that crossfade
+  play.pic = L.DomUtil.create('div', 'play-pic', map.getContainer());
+  play.pic.innerHTML = '<img alt=""><img alt="">';
   // Intro: everything on the map fades out together, then the dot grows at the start, then it walks
   PLAY_FADE_PANES.forEach(n => { const s = map.getPane(n).style; s.transition = `opacity ${PLAY_FADE_MS}ms ease`; s.opacity = 0; });
 
@@ -2343,6 +2364,16 @@ function playFrame(now) {
   // GPS misses distance on foot, so the counter is scaled to end on the published total
   const walkedNow = s.walkedFrom + (s.gap ? 0 : Math.min(along, s.cum[s.cum.length - 1]));
   p.km.textContent = Math.round(walkedNow / p.walked * PLAY_TOTAL_KM).toLocaleString('en-GB') + ' km';
+  // The thumbnail shows the day's photo once the dot passes where it was taken
+  let pi = p.pi;
+  while (pi < p.pics.length - 1 && d >= p.pics[pi + 1].at) pi++;
+  if (pi !== p.pi) {
+    p.pi = pi;
+    const [a, b] = p.pic.querySelectorAll('img'), back = a.classList.contains('on') ? b : a, front = back === a ? b : a;
+    back.onload = () => { if (p.pi === pi) { back.classList.add('on'); front.classList.remove('on'); p.pic.classList.add('show'); } };
+    back.src = p.pics[pi].src;
+    if (p.pics[pi + 1]) new Image().src = p.pics[pi + 1].src;   // preload the next one
+  }
   // The camera eases after the dot instead of locking onto it, so GPS wiggles don't shake the map;
   // it keeps easing during the pause at the end, so it settles on the arrival instead of freezing short of it
   p.cam = L.latLng(p.cam.lat + (pos.lat - p.cam.lat) * 0.04, p.cam.lng + (pos.lng - p.cam.lng) * 0.04);
@@ -2362,6 +2393,7 @@ function stopPlay() {
   if (p.drawn) map.removeLayer(p.drawn);
   if (p.dot) map.removeLayer(p.dot);
   p.km.remove();
+  p.pic.remove();
   gpsTracksLayer.addTo(map);
   if (p.photosOn) photosLayer.addTo(map);
   p.dayMarkers.forEach(m => m.addTo(map));
