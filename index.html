@@ -2168,7 +2168,7 @@ function addGpsTracksLayer() {
 // The whole trip takes PLAY_MS at a constant speed; rides between tracks are jumps.
 // The track draws itself behind the dot and the map follows it. Photos are hidden meanwhile.
 // Any click, tap, wheel, key or tab change stops it and puts the map back as it was.
-const PLAY_MS = 60000, PLAY_ZOOM = 8;
+const PLAY_MS = 60000, PLAY_ZOOM = 8, PLAY_RIDE_M = 5000;   // a ride appears when the dot is within 5 km of one end
 let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, play = null;
 
 function addPlayControl() {
@@ -2213,14 +2213,22 @@ function startPlay() {
   const photosOn = photosLayer && map.hasLayer(photosLayer);
   // The blue day markers are hidden while it plays (ride icons and ride lines stay)
   const dayMarkers = markers.filter(m => m instanceof L.Marker && m.options.interactive !== false && map.hasLayer(m));
-  play = { segs, total, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers,
+  // Rides (dashed line + its icon, added right after it) are hidden too and appear when the dot gets near one end
+  const rides = [];
+  markers.forEach((m, i) => {
+    if (!(m instanceof L.Polyline) || !m.options.dashArray || !map.hasLayer(m)) return;
+    const icon = markers[i + 1] instanceof L.Marker && markers[i + 1].options.interactive === false ? markers[i + 1] : null;
+    rides.push({ layers: icon ? [m, icon] : [m], ends: [m.getLatLngs()[0], m.getLatLngs()[m.getLatLngs().length - 1]] });
+  });
+  rides.forEach(r => r.layers.forEach(l => map.removeLayer(l)));
+  play = { segs, total, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
            drawn: L.layerGroup().addTo(map), line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   if (photosOn) map.removeLayer(photosLayer);
   map.removeLayer(gpsTracksLayer);
   dayMarkers.forEach(m => map.removeLayer(m));
   play.line = L.polyline([], PLAY_LINE).addTo(play.drawn);
   if (!map.getPane('playDot')) map.createPane('playDot').style.zIndex = 660;   // above everything else on the map
-  play.dot = L.circleMarker(segs[0].pts[0], { pane: 'playDot', radius: 11, weight: 3, color: '#fff', fillColor: '#d0261b', fillOpacity: 1, interactive: false }).addTo(map);
+  play.dot = L.circleMarker(segs[0].pts[0], { pane: 'playDot', radius: 15, weight: 3, color: '#fff', fillColor: '#d0261b', fillOpacity: 1, interactive: false }).addTo(map);
   map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
 
@@ -2248,6 +2256,9 @@ function playFrame(now) {
   const pos = L.latLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f);
   p.line.setLatLngs(s.pts.slice(0, i).concat(pos));
   p.dot.setLatLng(pos);
+  p.rides.forEach(r => {
+    if (!r.shown && r.ends.some(e => e.distanceTo(pos) < PLAY_RIDE_M)) { r.shown = true; r.layers.forEach(l => l.addTo(map)); }
+  });
   // The camera eases after the dot instead of locking onto it, so GPS wiggles don't shake the map
   p.cam = L.latLng(p.cam.lat + (pos.lat - p.cam.lat) * 0.04, p.cam.lng + (pos.lng - p.cam.lng) * 0.04);
   map.panTo(p.cam, { animate: false });
@@ -2266,6 +2277,7 @@ function stopPlay() {
   gpsTracksLayer.addTo(map);
   if (p.photosOn) photosLayer.addTo(map);
   p.dayMarkers.forEach(m => m.addTo(map));
+  p.rides.forEach(r => r.layers.forEach(l => l.addTo(map)));
   map.setView(p.view.center, p.view.zoom, { animate: false });
   document.querySelector('.play-btn').innerHTML = '▶ Play';
 }
