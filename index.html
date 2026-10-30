@@ -597,8 +597,19 @@ const D_ANIMAL_ICONS = {
   'glacier':'🏔️',
   'duck':'🦆','great cormorant':'🐦','cormorant':'🐦','gannets':'🐦','gannet':'🐦','kría':'🐦','kria':'🐦',
   'american mink':'🦦','bumble bee':'🐝','bee':'🐝','crow':'🐦‍⬛','chicken':'🐔','jellyfish':'🪼','fly':'🪰',
-  'river':'🌊','waterfall':'🌊','northern lights':'✨','caterpillar':'🐛',
+  'river':'🌊','waterfall':'icons/waterfall1.png','northern lights':'✨','caterpillar':'🐛',
 };
+// An icon can also be an image file (from icons/), loaded once before the radial is drawn
+const isIconImage = icon => /\.(png|svg|jpe?g|webp|gif)$/i.test(icon || '');
+const iconImages = {};
+function loadIconImages() {
+  return Promise.all(Object.values(D_ANIMAL_ICONS).filter(isIconImage).map(src => new Promise(done => {
+    const img = new Image();
+    img.onload = () => { iconImages[src] = img; done(); };
+    img.onerror = done;   // a missing file just isn't drawn
+    img.src = src;
+  })));
+}
 
 // ─────────────────────────────────────────────
 // DEMO DATA
@@ -999,11 +1010,16 @@ function drawIcon(ctx, icon, x, y, size, alpha=1) {
   ctx.arc(x, y, size * 0.62, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(242, 237, 227, 0.7)';
   ctx.fill();
-  ctx.font = `${size}px ${EMOJI_FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(icon, x, y);
-  drawnIcons.add(icon);
+  if (isIconImage(icon)) {
+    const img = iconImages[icon];
+    if (img) ctx.drawImage(img, x - size * 0.6, y - size * 0.6, size * 1.2, size * 1.2);
+  } else {
+    ctx.font = `${size}px ${EMOJI_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, x, y);
+    drawnIcons.add(icon);
+  }
   ctx.restore();
 }
 
@@ -1828,6 +1844,7 @@ async function diaryInit() {
     document.getElementById('diary-status').textContent='⚠ '+e.message;
   }
 
+  await loadIconImages();
   draw(days);
   radialIntro = { start: performance.now() + RADIAL_INTRO_DELAY };   // first load only: diaryInit runs once
   captureStatic();
