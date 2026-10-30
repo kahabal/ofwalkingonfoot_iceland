@@ -1829,8 +1829,18 @@ function addPhotosLayer() {
   map.getPane('photos').style.zIndex = 650;
   const layer = L.layerGroup().addTo(map);
   layersControl.addOverlay(layer, 'Photos');
-  // Thumbnails sit up and to the right of where the photo was taken, so the day marker under that
-  // spot stays visible; a small dot marks the exact place. Photos within 40 m of each other fan out.
+  // Zoomed out (below PHOTO_ZOOM) every photo spot is a small dot; a click zooms in there.
+  // Zoomed in, thumbnails sit up and to the right of where the photo was taken, so the day marker
+  // under that spot stays visible; a small dot marks the exact place. Photos within 40 m fan out.
+  const PHOTO_ZOOM = 9;
+  const thumbs = L.layerGroup(), dots = L.layerGroup();
+  const showForZoom = () => {
+    const near = map.getZoom() >= PHOTO_ZOOM;
+    layer.removeLayer(near ? dots : thumbs);
+    layer.addLayer(near ? thumbs : dots);
+  };
+  map.on('zoomend', showForZoom);
+  showForZoom();
   const spots = [];
   fetch('photos.json', { cache: 'no-cache' })
     .then(r => r.json())
@@ -1841,13 +1851,16 @@ function addPhotosLayer() {
         spots.push(spot);
         L.circleMarker([p.lat, p.lon], {
           pane: 'photos', radius: 3, weight: 1.5, color: '#fff', fillColor: '#2a2118', fillOpacity: 1, interactive: false
-        }).addTo(layer);
+        }).addTo(thumbs);
+        L.circleMarker([p.lat, p.lon], {
+          pane: 'photos', radius: 4, weight: 1.5, color: '#fff', fillColor: '#2a2118', fillOpacity: 1
+        }).on('click', () => map.setView([p.lat, p.lon], PHOTO_ZOOM + 2)).addTo(dots);
       }
       L.marker([spot.lat, spot.lon], {
         pane: 'photos',
         icon: L.divIcon({ className: 'photo-marker', html: `<img src="photos/thumbs/${p.id}.jpg" alt="">`,
                           iconSize: [48, 48], iconAnchor: [-8 - spot.n * 52, 56] })
-      }).on('click', () => openLightbox(p)).addTo(layer);
+      }).on('click', () => openLightbox(p)).addTo(thumbs);
       spot.n++;
     }))
     .catch(() => {});
