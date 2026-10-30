@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 /* ── ROOT ── */
 :root {
@@ -109,6 +110,33 @@ body::before {
 /* ── VIEWS ── */
 #view-diary, #view-tracker { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
 #view-diary.active, #view-tracker.active { display: flex; }
+
+/* ── BIOMETRICS VIEW ── */
+#view-bio { display: none; flex: 1; overflow-y: auto; min-height: 0; }
+#view-bio.active { display: block; }
+#bio-wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px 32px; }
+.bio-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.bio-title { font-size: 26px; font-weight: 300; font-style: italic; }
+.bio-range { font-family: var(--font-mono); font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 3px 9px; }
+#bio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; margin: 16px 0; }
+.bio-card { border: 1px solid var(--border); background: var(--paper2); border-radius: 4px; padding: 12px 14px; }
+.bio-card .l { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bio-card .v { font-size: 28px; font-weight: 300; color: var(--ink); line-height: 1.15; margin-top: 4px; }
+.bio-card .v small { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.bio-card .s { font-family: var(--font-mono); font-size: 11px; margin-top: 4px; }
+.bio-panel { border: 1px solid var(--border); border-radius: 4px; padding: 14px; margin-bottom: 14px; }
+.bio-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.bio-seg { display: inline-flex; }
+.bio-controls button { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--border); background: var(--paper2); color: var(--muted); padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+.bio-seg button:first-child { border-radius: 3px 0 0 3px; } .bio-seg button:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+.bio-controls button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+#bio-toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.bio-tog { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; }
+.bio-tog.on { color: var(--ink); background: var(--paper2); }
+.bio-tog input { accent-color: var(--ink); }
+.bio-tog .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.bio-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; margin-bottom: 8px; }
+.bio-chart { position: relative; height: 460px; }
 
 /* ── DIARY VIEW ── */
 #diary-status {
@@ -279,6 +307,11 @@ body::before {
   .entry { padding: 12px 16px; }
   #detail-modal { padding: 10px; }
   #detail-box { max-height: 92vh; }
+  #bio-wrap { padding: 14px 16px 24px; }
+  #bio-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .bio-card .v { font-size: 24px; }
+  #bio-toggles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bio-chart { height: 340px; }
   .detail-grid { grid-template-columns: 1fr; }
 }
 </style>
@@ -304,6 +337,9 @@ body::before {
     </button>
     <button class="tab-btn" id="tab-tracker" onclick="switchTab('tracker')">
       <span class="tab-icon">🗺</span>Map Tracker
+    </button>
+    <button class="tab-btn" id="tab-bio" onclick="switchTab('bio')">
+      <span class="tab-icon">♥</span>Biometrics
     </button>
   </div>
 </div>
@@ -348,6 +384,29 @@ body::before {
   </div>
 </div>
 
+<!-- BIOMETRICS VIEW -->
+<div id="view-bio">
+  <div id="bio-wrap">
+    <div class="bio-head">
+      <h2 class="bio-title">What does it take?</h2>
+      <span class="bio-range" id="bio-range">Loading…</span>
+    </div>
+    <div id="bio-cards"></div>
+    <section class="bio-panel">
+      <div class="bio-controls">
+        <span class="bio-seg"><button id="bio-norm" class="on">Normalized (0–100%)</button><button id="bio-abs">Absolute scale</button></span>
+        <button id="bio-all">Select all</button>
+        <button id="bio-none">Deselect all</button>
+      </div>
+      <div id="bio-toggles"></div>
+    </section>
+    <section class="bio-panel">
+      <div class="bio-count" id="bio-count"></div>
+      <div class="bio-chart"><canvas id="bioChart"></canvas></div>
+    </section>
+  </div>
+</div>
+
 <!-- PHOTO LIGHTBOX (map) -->
 <div id="lightbox" onclick="if(event.target.id==='lightbox'||event.target.classList.contains('lb-close'))closeLightbox()">
   <button class="lb-close" aria-label="Close">✕</button>
@@ -372,23 +431,29 @@ let diaryActive = true;
 let trackerInited = false;
 let diaryInited = false;
 
+let bioInited = false;
+
 function switchTab(tab) {
   diaryActive = tab === 'diary';
-  document.getElementById('view-diary').classList.toggle('active', diaryActive);
-  document.getElementById('view-tracker').classList.toggle('active', !diaryActive);
-  document.getElementById('tab-diary').classList.toggle('active', diaryActive);
-  document.getElementById('tab-tracker').classList.toggle('active', !diaryActive);
+  for (const t of ['diary', 'tracker', 'bio']) {
+    document.getElementById('view-' + t).classList.toggle('active', t === tab);
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  }
 
-  if (diaryActive && !diaryInited) {
+  if (tab === 'diary' && !diaryInited) {
     diaryInited = true;
     diaryInit();
   }
-  if (!diaryActive && !trackerInited) {
+  if (tab === 'tracker' && !trackerInited) {
     trackerInited = true;
     trackerInit();
   }
+  if (tab === 'bio' && !bioInited) {
+    bioInited = true;
+    bioInit();
+  }
   // Invalidate map size when switching to tracker
-  if (!diaryActive && typeof map !== 'undefined' && map) {
+  if (tab === 'tracker' && typeof map !== 'undefined' && map) {
     setTimeout(() => map.invalidateSize(), 50);
   }
 }
@@ -1907,6 +1972,155 @@ function closeLightbox() {
   box.querySelector('img').src = '';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ── BIOMETRICS TAB ─────────────────────────────────────
+// Same content as iceland_biometrics.html (cards, layer toggles, chart), but reading the Sheet's
+// Biometrics tab and drawn in the diary's colours. Cards marked `fixed` are values that are not in
+// the daily data; they are kept as they were on the original page.
+const BIO_METRICS = {
+  cardio_load:         { col: 'Cardio_Load',    label: 'Cardio load',          color: '#2d7a7a', fmt: v => v.toFixed(2) },
+  steps:               { col: 'Steps',          label: 'Steps',                color: '#b0662a', fmt: (v, d) => `${Math.round(v).toLocaleString('en-GB')} (${d.distance_km != null ? d.distance_km.toFixed(1) : '0'} km)` },
+  total_calories_kcal: { col: 'Calories_kcal',  label: 'Total calories (kcal)', color: '#b8932a', fmt: v => Math.round(v) + ' kcal' },
+  gain_meters:         { col: 'Gain_m',         label: 'Altitude gain (m)',    color: '#6b5a8e', fmt: v => Math.round(v) + ' m' },
+  walking_skin_temp:   { col: 'Skin_Temp_C',    label: 'Walking skin temp (°C)', color: '#4f8a6e', fmt: v => v.toFixed(2) + ' °C' },
+  avg_walking_hr:      { col: 'Avg_Walking_HR', label: 'Walking heart rate',   color: '#a0445e', fmt: v => Math.round(v) + ' BPM' },
+  sleep_score:         { col: 'Sleep_Score',    label: 'Sleep score (0–100)',  color: '#2d5a8e', fmt: v => Math.round(v) + ' / 100' },
+};
+const bioActive = new Set(['cardio_load', 'steps', 'total_calories_kcal', 'walking_skin_temp', 'avg_walking_hr', 'sleep_score']);
+let bioNormalized = true, bioChart = null, bioData = [], bioExt = {};
+
+async function bioInit() {
+  try {
+    const rows = d_parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
+    bioData = rows.map(r => {
+      const d = { date: r.Date, distance_km: d_num(r.Distance_km) };
+      for (const [k, m] of Object.entries(BIO_METRICS)) d[k] = d_num(r[m.col]);
+      return d;
+    });
+  } catch (e) {
+    document.getElementById('bio-range').textContent = '⚠ could not load the Biometrics tab';
+    return;
+  }
+  for (const k of Object.keys(BIO_METRICS)) {
+    const v = bioData.map(d => d[k]).filter(x => x != null);
+    bioExt[k] = { min: Math.min(...v), max: Math.max(...v) };
+  }
+  bioRenderCards();
+  bioRenderToggles();
+  document.getElementById('bio-norm').onclick = () => bioSetMode(true);
+  document.getElementById('bio-abs').onclick = () => bioSetMode(false);
+  document.getElementById('bio-all').onclick = () => { Object.keys(BIO_METRICS).forEach(k => bioActive.add(k)); bioRenderToggles(); bioUpdate(); };
+  document.getElementById('bio-none').onclick = () => { bioActive.clear(); bioRenderToggles(); bioUpdate(); };
+  bioInitChart();
+}
+
+function bioRenderCards() {
+  const sum = k => bioData.reduce((a, d) => a + (d[k] || 0), 0);
+  const vals = k => bioData.map(d => d[k]).filter(x => x != null);
+  const max = k => Math.max(...vals(k));
+  const avg = k => { const v = vals(k); return v.reduce((a, b) => a + b, 0) / v.length; };
+  const n = (x, dec = 0) => x.toLocaleString('en-GB', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  const short = s => { const [d, m] = s.split('/'); return new Date(2026, m - 1, d).toLocaleDateString('en-GB', { month: 'short', day: '2-digit' }); };
+  const cards = [
+    ['Total distance',  n(sum('distance_km')), 'km',     `Max day: ${n(max('distance_km'), 1)} km`, '#4f8a6e'],
+    ['Total steps',     n(sum('steps')), '',             `Max day: ${n(max('steps'))}`, BIO_METRICS.steps.color],
+    ['Total calories',  n(sum('total_calories_kcal')), 'kcal', 'Basal + active TEE', BIO_METRICS.total_calories_kcal.color],
+    ['Vertical gain',   n(sum('gain_meters')), 'm',      `Max day: ${n(max('gain_meters'))} m`, BIO_METRICS.gain_meters.color],
+    ['Peak heart rate', '198.0', 'BPM',                  'Max peak (Aug 04)', BIO_METRICS.avg_walking_hr.color],             // fixed
+    ['Avg walking HR',  n(avg('avg_walking_hr'), 1), 'BPM', 'Aerobic baseline', BIO_METRICS.avg_walking_hr.color],
+    ['Avg sleep score', n(avg('sleep_score'), 1), '/100', `Peak: ${n(max('sleep_score'))} / 100`, BIO_METRICS.sleep_score.color],
+    ['Coldest dip',     '10.9', '°C',                    'Peak cold (July 29)', BIO_METRICS.cardio_load.color],              // fixed
+    ['Max altitude',    n(max('gain_meters')), 'm',      'Peak single ascent', BIO_METRICS.gain_meters.color],
+    ['Max activity',    '15.5', 'hrs/day',               'Peak duration', BIO_METRICS.cardio_load.color],                    // fixed
+    ['Max km/day',      n(max('distance_km'), 1), 'km',  'Peak distance', '#4f8a6e'],
+    ['Peak cardio',     '4.37', '',                      'Max load index', BIO_METRICS.cardio_load.color],                   // fixed
+  ];
+  document.getElementById('bio-cards').innerHTML = cards.map(([l, v, u, s, c]) =>
+    `<div class="bio-card"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div><div class="s" style="color:${c}">${s}</div></div>`).join('');
+  document.getElementById('bio-range').textContent = `${short(bioData[0].date)} – ${short(bioData[bioData.length - 1].date)}`;
+}
+
+function bioRenderToggles() {
+  const box = document.getElementById('bio-toggles');
+  box.innerHTML = '';
+  for (const [k, m] of Object.entries(BIO_METRICS)) {
+    const on = bioActive.has(k);
+    const lab = document.createElement('label');
+    lab.className = 'bio-tog' + (on ? ' on' : '');
+    lab.innerHTML = `<input type="checkbox" ${on ? 'checked' : ''}><span class="dot" style="background:${m.color}"></span><span>${m.label}</span>`;
+    lab.querySelector('input').onchange = e => {
+      e.target.checked ? bioActive.add(k) : bioActive.delete(k);
+      lab.classList.toggle('on', e.target.checked);
+      bioUpdate();
+    };
+    box.appendChild(lab);
+  }
+}
+
+function bioSetMode(norm) {
+  bioNormalized = norm;
+  document.getElementById('bio-norm').classList.toggle('on', norm);
+  document.getElementById('bio-abs').classList.toggle('on', !norm);
+  bioUpdate();
+}
+
+function bioSeries(k) {
+  const e = bioExt[k], span = e.max - e.min;
+  return bioData.map(d => d[k] == null ? null : bioNormalized ? (span === 0 ? 0 : (d[k] - e.min) / span * 100) : d[k]);
+}
+
+function bioInitChart() {
+  const keys = Object.keys(BIO_METRICS);
+  bioChart = new Chart(document.getElementById('bioChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: bioData.map(d => d.date.slice(0, 5)),
+      datasets: keys.map(k => ({
+        label: BIO_METRICS[k].label, data: bioSeries(k),
+        borderColor: BIO_METRICS[k].color, backgroundColor: BIO_METRICS[k].color + '22',
+        borderWidth: 2, pointRadius: 2, pointHoverRadius: 6, tension: 0.2, spanGaps: true, hidden: !bioActive.has(k)
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#2a2118', titleColor: '#f2ede3', bodyColor: '#e3dccd', padding: 12, boxPadding: 6, usePointStyle: true,
+          titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: c => {
+              const k = keys[c.datasetIndex], d = bioData[c.dataIndex];
+              return ` ${BIO_METRICS[k].label}: ${d[k] == null ? 'N/A' : BIO_METRICS[k].fmt(d[k], d)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#e3dccd' }, ticks: { color: '#8a7a68', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 12 } },
+        y: { grid: { color: '#e3dccd' }, max: bioNormalized ? 100 : undefined,
+             ticks: { color: '#8a7a68', font: { family: 'JetBrains Mono', size: 10 }, callback: v => bioNormalized ? v + '%' : v } }
+      }
+    }
+  });
+  bioUpdateCount();
+}
+
+function bioUpdate() {
+  if (!bioChart) return;
+  Object.keys(BIO_METRICS).forEach((k, i) => {
+    bioChart.data.datasets[i].hidden = !bioActive.has(k);
+    bioChart.data.datasets[i].data = bioSeries(k);
+  });
+  bioChart.options.scales.y.max = bioNormalized ? 100 : undefined;
+  bioChart.update();
+  bioUpdateCount();
+}
+
+function bioUpdateCount() {
+  document.getElementById('bio-count').textContent = `Showing ${bioActive.size} of ${Object.keys(BIO_METRICS).length} layers`;
+}
 
 // Real GPS tracks of the walk (tracks.geojson: simplified once from the full KML, 10 m tolerance).
 // Drawn in its own pane under the ride lines and markers; always on. The checkbox box holds the other layers (Photos).
