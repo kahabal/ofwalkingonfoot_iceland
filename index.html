@@ -1909,6 +1909,7 @@ function scheduleMidnightRefresh() {
     scheduleMidnightRefresh(); // reschedule for next midnight
   }, msUntilMidnight);
 }
+const ICELAND_BOUNDS = [[63.3, -24.6], [66.6, -13.4]];
 function initMap() {
   map = L.map('map', { zoomControl: true, attributionControl: true });
   // Neutral grey base: no territorial-waters line in the sea
@@ -1916,7 +1917,7 @@ function initMap() {
     attribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors',
     maxNativeZoom: 16, maxZoom: 19
   }).addTo(map);
-  map.setView([64.9631, -19.0208], 6); // Iceland default
+  map.fitBounds(ICELAND_BOUNDS);   // the whole island, whatever the screen size
   addGpsTracksLayer();
   addPhotosLayer();
 }
@@ -2140,6 +2141,8 @@ function addGpsTracksLayer() {
     .then(r => r.json())
     .then(gj => {
       gpsTracksData = gj;
+      playReady.tracks = true;
+      addPlayControl();
       L.geoJSON(gj, {
         pane: 'gpsTracks',
         interactive: false,
@@ -2147,7 +2150,6 @@ function addGpsTracksLayer() {
       }).addTo(layer);
     })
     .catch(() => {});
-  addPlayControl();
 }
 
 // ── PLAY: a terracotta dot walks the GPS tracks from the first walking day ──
@@ -2161,7 +2163,11 @@ const PLAY_TOTAL_KM = 3208;  // the published total the km counter ends on (same
 const dateKey = s => (s || '').split('/').reverse().join('');   // DD/MM/YYYY → YYYYMMDD, sortable
 let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, play = null;
 
+// The Play button appears only once both the GPS tracks and the diary entries are on the map
+const playReady = { tracks: false, entries: false, shown: false };
 function addPlayControl() {
+  if (!playReady.tracks || !playReady.entries || playReady.shown) return;
+  playReady.shown = true;
   const Ctl = L.Control.extend({
     onAdd() {
       const btn = L.DomUtil.create('button', 'play-btn');
@@ -2555,15 +2561,9 @@ async function renderMap(byDay, days, dayNumMap) {
     });
   });
 
-  // Fit map to all coords
-  if (allCoords.length > 0) {
-    if (allCoords.length === 1) {
-      map.setView(allCoords[0], 13);
-    } else {
-      map.fitBounds(L.latLngBounds(allCoords), { padding: [40, 40] });
-      setTimeout(() => map.panTo(allCoords[allCoords.length - 1]), 500);
-    }
-  }
+  // The view stays where initMap put it (all of Iceland), so the map doesn't jump once the entries arrive
+  playReady.entries = true;
+  addPlayControl();
 }
 
 // Daily biometrics box for one date (DD/MM/YYYY), '' when the Biometrics tab has no row
