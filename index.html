@@ -339,6 +339,10 @@ body::before {
   .tab-btn:last-child { margin-right: 0; }
   .stat-cell { padding: 6px 10px; }
   .stat-num { font-size: 20px; }
+  /* "84 active walking days / 3200 km on foot" on one line */
+  .stat-line { font-size: 10px; letter-spacing: .03em; white-space: nowrap; }
+  .stat-line .stat-num { font-size: 16px; margin-right: 2px; }
+  .stat-sep { margin: 0 5px; }
   /* The map fills the screen; the day list is a sheet that slides up over it (Diary button) */
   #tracker-layout { display: block; position: relative; }
   #map-col { height: 100%; border-right: none; }
