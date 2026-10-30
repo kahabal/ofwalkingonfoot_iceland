@@ -2153,9 +2153,9 @@ function addGpsTracksLayer() {
 // ── PLAY: a terracotta dot walks the GPS tracks from the first walking day ──
 // The whole trip takes PLAY_MS at a constant speed. Between tracks, and after the last one through the
 // remaining diary entries back to Reykjavík, it rides along dashed lines. The track draws itself behind
-// the dot and the map eases after it. Photos and day markers are hidden; each ride appears as the dot reaches it.
+// the dot and the map eases after it. Photos and day markers are hidden; each ride appears when the dot reaches its time.
 // Any click, tap, wheel, key or tab change stops it and puts the map back as it was.
-const PLAY_MS = 60000, PLAY_ZOOM = 8, PLAY_RIDE_M = 5000;   // a ride appears when the dot is within 5 km of one end
+const PLAY_MS = 60000, PLAY_ZOOM = 8;
 const PLAY_HOLD_MS = 2500;   // pause on the arrival before the map goes back to normal
 const PLAY_TOTAL_KM = 3208;  // the published total the km counter ends on (same as the Biometrics tab)
 const dateKey = s => (s || '').split('/').reverse().join('');   // DD/MM/YYYY → YYYYMMDD, sortable
@@ -2186,24 +2186,26 @@ function startPlay() {
     .map(f => ({ date: dateKey(f.properties.date), key: dateKey(f.properties.date) + (f.properties.start || ''),
                  pts: f.geometry.coordinates.map(c => L.latLng(c[1], c[0])) }))
     .sort((a, b) => a.key.localeCompare(b.key));
-  // date: the day the segment starts on, so a ride only shows once the dot has reached that day
+  // key / until: when the segment starts and when the next track (or entry) starts, as YYYYMMDDHH:MM,
+  // so a ride only shows once the dot gets to it in time (see playFrame)
   const segs = [];
   tracks.forEach((t, i) => {
-    if (i) segs.push({ pts: [tracks[i - 1].pts[tracks[i - 1].pts.length - 1], t.pts[0]], gap: true, date: tracks[i - 1].date });
-    segs.push({ pts: t.pts, gap: false, date: t.date });
+    const next = tracks[i + 1] ? tracks[i + 1].key : '99';
+    if (i) segs.push({ pts: [tracks[i - 1].pts[tracks[i - 1].pts.length - 1], t.pts[0]], gap: true, key: tracks[i - 1].key, until: t.key });
+    segs.push({ pts: t.pts, gap: false, key: t.key, until: next });
   });
   // After the last track: the diary entries of the following days, through any ride's via points
   const lastTrack = tracks[tracks.length - 1];
-  let prev = { pt: lastTrack.pts[lastTrack.pts.length - 1], date: lastTrack.date, raw: null };
+  let prev = { pt: lastTrack.pts[lastTrack.pts.length - 1], key: lastTrack.key, raw: null };
   allEntries
     .filter(e => dateKey(e.Date) > lastTrack.date && hasCoords(e))
     .sort((a, b) => (dateKey(a.Date) + a.Time).localeCompare(dateKey(b.Date) + b.Time))
     .forEach(e => {
-      const pt = L.latLng(toFloat(e.Latitude), toFloat(e.Longitude));
+      const pt = L.latLng(toFloat(e.Latitude), toFloat(e.Longitude)), key = dateKey(e.Date) + e.Time.slice(0, 5);
       const ride = prev.raw && TRAVEL_OVERNIGHT.find(t => t.from === prev.raw && t.to === e.Date);
       const via = ride && ride.via ? ride.via.map(v => L.latLng(v[0], v[1])) : [];
-      segs.push({ pts: [prev.pt, ...via, pt], gap: true, date: prev.date });
-      prev = { pt, date: dateKey(e.Date), raw: e.Date };
+      segs.push({ pts: [prev.pt, ...via, pt], gap: true, key: prev.key, until: key });
+      prev = { pt, key, raw: e.Date };
     });
   let total = 0, walked = 0;   // walked: distance on foot only, for the km counter
   segs.forEach(s => {
@@ -2217,15 +2219,14 @@ function startPlay() {
   if (!total) return;
 
   const photosOn = photosLayer && map.hasLayer(photosLayer);
-  // The blue day markers are hidden while it plays (ride icons and ride lines stay)
+  // The blue day markers are hidden while it plays
   const dayMarkers = markers.filter(m => m instanceof L.Marker && m.options.interactive !== false && map.hasLayer(m));
-  // Rides (dashed line + its icon, added right after it) are hidden too and appear when the dot gets near one end
+  // Rides (dashed line + its icon, added right after it) are hidden too and appear when the dot gets to them in time
   const rides = [];
   markers.forEach((m, i) => {
     if (!(m instanceof L.Polyline) || !m.options.dashArray || !map.hasLayer(m)) return;
     const icon = markers[i + 1] instanceof L.Marker && markers[i + 1].options.interactive === false ? markers[i + 1] : null;
-    rides.push({ layers: icon ? [m, icon] : [m], date: dateKey(m.options.rideDate),
-                 ends: [m.getLatLngs()[0], m.getLatLngs()[m.getLatLngs().length - 1]] });
+    rides.push({ layers: icon ? [m, icon] : [m], key: m.options.rideKey || '' });
   });
   play = { segs, total, walked, si: 0, phase: 'fade', t0: performance.now(), start: 0,
            view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
@@ -2288,8 +2289,10 @@ function playFrame(now) {
   const pos = L.latLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f);
   p.line.setLatLngs(s.pts.slice(0, i).concat(pos));
   p.dot.setLatLng(pos);
+  // A ride shows once the dot is past its start time: on a track that began after it,
+  // or on the gap that leads to the first track (or entry) after it
   p.rides.forEach(r => {
-    if (!r.shown && s.date >= r.date && r.ends.some(e => e.distanceTo(pos) < PLAY_RIDE_M)) { r.shown = true; r.layers.forEach(l => l.addTo(map)); }
+    if (!r.shown && (s.key > r.key || (s.gap && s.until > r.key))) { r.shown = true; r.layers.forEach(l => l.addTo(map)); }
   });
   // GPS misses distance on foot, so the counter is scaled to end on the published total
   const walkedNow = s.walkedFrom + (s.gap ? 0 : Math.min(along, s.cum[s.cum.length - 1]));
@@ -2487,7 +2490,8 @@ async function renderMap(byDay, days, dayNumMap) {
       if (prevCoords && prevCoords.length && ride) {
         const a = prevCoords[prevCoords.length - 1], via = ride.via || [];
         markers.push(L.polyline([a, ...via, coords[0]], {
-          color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7', rideDate: days[dayIdx - 1]
+          color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7', rideDate: days[dayIdx - 1],
+          rideKey: dateKey(days[dayIdx - 1]) + '24:00'   // overnight: after everything that day, for Play
         }).addTo(map));
         addTravelIcon(via[0] || [(a[0] + coords[0][0]) / 2, (a[1] + coords[0][1]) / 2], ride.mode);
       }
@@ -2502,7 +2506,7 @@ async function renderMap(byDay, days, dayNumMap) {
       const trip = prev ? travelFor(day, prev, e) : null;
       if (!trip) return;
       const p = [toFloat(prev.Latitude), toFloat(prev.Longitude)], c = [toFloat(e.Latitude), toFloat(e.Longitude)];
-      markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7', rideDate: day }).addTo(map));
+      markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7', rideDate: day, rideKey: dateKey(day) + trip.from }).addTo(map));
       addTravelIcon([(p[0] + c[0]) / 2, (p[1] + c[1]) / 2], trip.mode);
     });
   });
