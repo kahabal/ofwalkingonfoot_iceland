@@ -2173,6 +2173,7 @@ function addGpsTracksLayer() {
 // Any click, tap, wheel, key or tab change stops it and puts the map back as it was.
 const PLAY_MS = 60000, PLAY_ZOOM = 8, PLAY_RIDE_M = 5000;   // a ride appears when the dot is within 5 km of one end
 const PLAY_HOLD_MS = 2500;   // pause on the arrival before the map goes back to normal
+const PLAY_TOTAL_KM = 3208;  // the published total the km counter ends on (same as the Biometrics tab)
 const dateKey = s => (s || '').split('/').reverse().join('');   // DD/MM/YYYY → YYYYMMDD, sortable
 let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, play = null;
 
@@ -2243,7 +2244,7 @@ function startPlay() {
                  ends: [m.getLatLngs()[0], m.getLatLngs()[m.getLatLngs().length - 1]] });
   });
   rides.forEach(r => r.layers.forEach(l => map.removeLayer(l)));
-  play = { segs, total, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
+  play = { segs, total, walked, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
            drawn: L.layerGroup().addTo(map), line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   if (photosOn) map.removeLayer(photosLayer);
   map.removeLayer(gpsTracksLayer);
@@ -2283,7 +2284,9 @@ function playFrame(now) {
   p.rides.forEach(r => {
     if (!r.shown && s.date >= r.date && r.ends.some(e => e.distanceTo(pos) < PLAY_RIDE_M)) { r.shown = true; r.layers.forEach(l => l.addTo(map)); }
   });
-  p.km.textContent = Math.round((s.walkedFrom + (s.gap ? 0 : Math.min(along, s.cum[s.cum.length - 1]))) / 1000).toLocaleString('en-GB') + ' km';
+  // GPS misses distance on foot, so the counter is scaled to end on the published total
+  const walkedNow = s.walkedFrom + (s.gap ? 0 : Math.min(along, s.cum[s.cum.length - 1]));
+  p.km.textContent = Math.round(walkedNow / p.walked * PLAY_TOTAL_KM).toLocaleString('en-GB') + ' km';
   // The camera eases after the dot instead of locking onto it, so GPS wiggles don't shake the map;
   // it keeps easing during the pause at the end, so it settles on the arrival instead of freezing short of it
   p.cam = L.latLng(p.cam.lat + (pos.lat - p.cam.lat) * 0.04, p.cam.lng + (pos.lng - p.cam.lng) * 0.04);
