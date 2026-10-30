@@ -240,6 +240,7 @@ body::before {
 .day-bio-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
 .day-bio-val { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .day-bio-val small { font-size: 10px; color: var(--muted); }
+.detail-section .day-bio { border: none; border-radius: 4px; padding: 10px 12px; }
 @media (max-width: 600px) { .day-bio { grid-template-columns: repeat(2, 1fr); } }
 .day-entries { display: block; }
 .day-entries.collapsed { display: none; }
@@ -2406,6 +2407,26 @@ async function renderMap(byDay, days, dayNumMap) {
   }
 }
 
+// Daily biometrics box for one date (DD/MM/YYYY), '' when the Biometrics tab has no row
+function dayBioHTML(day) {
+  const bio = trackerBio[day];
+  if (!bio) return '';
+  const f = (col, digits) => { const v = d_num(bio[col]); return v == null ? null : v.toLocaleString('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits }); };
+  const cells = [
+    ['📏 Distance',  f('Distance_km', 1),    'km'],
+    ['👣 Steps',     f('Steps', 0),          ''],
+    ['⛰️ Gain',      f('Gain_m', 0),         'm'],
+    ['🔥 Calories',  f('Calories_kcal', 0),  'kcal'],
+    ['❤️ Walking HR', f('Avg_Walking_HR', 0), 'BPM'],
+    ['💪 Cardio load', f('Cardio_Load', 2),  ''],
+    ['🌡️ Skin temp', f('Skin_Temp_C', 1),    '°C'],
+    ['😴 Sleep',     f('Sleep_Score', 0),    '/100'],
+  ].filter(c => c[1] != null);
+  if (!cells.length) return '';
+  return `<div class="day-bio">${cells.map(([label, v, unit]) =>
+    `<div class="day-bio-cell"><span class="day-bio-label">${label}</span><span class="day-bio-val">${v}${unit ? ' <small>' + unit + '</small>' : ''}</span></div>`).join('')}</div>`;
+}
+
 // ── LOG RENDER ─────────────────────────────────────────
 function renderLog(byDay, days, dayNumMap) {
   const list = document.getElementById('log-list');
@@ -2442,28 +2463,8 @@ function renderLog(byDay, days, dayNumMap) {
     heading.onclick = () => entriesDiv.classList.toggle('collapsed');
     group.appendChild(heading);
 
-    // Daily biometrics box under the day title
-    const bio = trackerBio[day];
-    if (bio) {
-      const f = (col, digits) => { const v = d_num(bio[col]); return v == null ? null : v.toLocaleString('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits }); };
-      const cells = [
-        ['📏 Distance',  f('Distance_km', 1),    'km'],
-        ['👣 Steps',     f('Steps', 0),          ''],
-        ['⛰️ Gain',      f('Gain_m', 0),         'm'],
-        ['🔥 Calories',  f('Calories_kcal', 0),  'kcal'],
-        ['❤️ Walking HR', f('Avg_Walking_HR', 0), 'BPM'],
-        ['💪 Cardio load', f('Cardio_Load', 2),  ''],
-        ['🌡️ Skin temp', f('Skin_Temp_C', 1),    '°C'],
-        ['😴 Sleep',     f('Sleep_Score', 0),    '/100'],
-      ].filter(c => c[1] != null);
-      if (cells.length) {
-        const box = document.createElement('div');
-        box.className = 'day-bio';
-        box.innerHTML = cells.map(([label, v, unit]) =>
-          `<div class="day-bio-cell"><span class="day-bio-label">${label}</span><span class="day-bio-val">${v}${unit ? ' <small>' + unit + '</small>' : ''}</span></div>`).join('');
-        group.appendChild(box);
-      }
-    }
+    // Daily biometrics box, shown at the top of the open day
+    entriesDiv.insertAdjacentHTML('beforeend', dayBioHTML(day));
 
     // Entries — morning to night within the day (days themselves stay newest first)
     [...entries].sort((a, b) => (a.Timestamp || '').localeCompare(b.Timestamp || '')).forEach(e => {
@@ -2707,7 +2708,9 @@ function openDetail(e) {
     ['Precip', e.Precip_mm ? e.Precip_mm + ' mm' : ''],
   ].filter(([,v]) => v);
 
-  let html = '';
+  // The day's biometrics first
+  const bioBox = dayBioHTML(e.Date);
+  let html = bioBox ? `<div class="detail-section"><h3>Day biometrics</h3>${bioBox}</div>` : '';
 
   // Wind comparison
   if (e.Wind_ms || e.Wind_Scale) {
