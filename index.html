@@ -147,12 +147,6 @@ body::before {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-#diary-legend {
-  display: flex; flex-wrap: wrap; gap: 5px 16px;
-  padding: 7px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.dli { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
-.dlic { font-family: var(--font-emoji); font-size: 14px; line-height: 1; }
 #diary-canvas-wrap {
   flex: 1; overflow: hidden; position: relative; cursor: grab;
 }
@@ -399,7 +393,6 @@ body::before {
 <!-- DIARY VIEW -->
 <div id="view-diary" class="active">
   <div id="diary-status" hidden>Loading…</div>
-  <div id="diary-legend"></div>
   <div id="diary-canvas-wrap">
     <canvas id="dial"></canvas>
     <div id="diary-zoom-bar">
@@ -1843,19 +1836,6 @@ function setupCanvasEvents(canvas, days) {
   canvas.addEventListener('dblclick', resetZoom);
 }
 // ─────────────────────────────────────────────
-// LEGEND
-// ─────────────────────────────────────────────
-function buildLegend() {
-  const el=document.getElementById('diary-legend');
-  RINGS.forEach(ring=>{
-    const item=document.createElement('div');
-    item.className='dli';
-    item.innerHTML=`<span class="dlic">${ring.icon}</span><span style="color:${ring.color}">${ring.label}</span>`;
-    el.appendChild(item);
-  });
-}
-
-// ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
 let sharedDemoDays = null; // shared between diary and tracker
@@ -1869,7 +1849,6 @@ function loadingStep(promise) {
 }
 
 async function diaryInit() {
-  buildLegend();
   let days=[];
   try {
     if(USE_DEMO) {
