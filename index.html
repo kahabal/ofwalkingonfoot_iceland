@@ -1884,12 +1884,12 @@ function closeLightbox() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 // Real GPS tracks of the walk (tracks.geojson: simplified once from the full KML, 10 m tolerance).
-// Drawn in its own pane under the diary lines and markers, with an on/off checkbox; on by default.
+// Drawn in its own pane under the ride lines and markers; always on. The checkbox box holds the other layers (Photos).
 function addGpsTracksLayer() {
   map.createPane('gpsTracks');
   map.getPane('gpsTracks').style.zIndex = 350;
-  const layer = L.layerGroup().addTo(map);
-  layersControl = L.control.layers(null, { 'GPS tracks': layer }, { collapsed: false, position: 'topright' }).addTo(map);
+  const layer = L.layerGroup().addTo(map);   // always shown
+  layersControl = L.control.layers(null, {}, { collapsed: false, position: 'topright' }).addTo(map);
   fetch('tracks.geojson', { cache: 'no-cache' })   // revalidate, so a rebuilt file shows up at once
     .then(r => r.json())
     .then(gj => L.geoJSON(gj, {
@@ -2069,7 +2069,8 @@ async function renderMap(byDay, days, dayNumMap) {
     const coords = dayCoordMap[day];
     if (!coords.length) return;
 
-    // Connect previous day's last point to this day's first point (overnight walk line)
+    // The walking itself is shown by the GPS tracks; only rides (TRAVEL lists) get a line here, dotted with an icon.
+    // Ride from the previous day's last point to this day's first point
     if (dayIdx > 0) {
       const prevCoords = dayCoordMap[days[dayIdx - 1]];
       const ride = TRAVEL_OVERNIGHT.find(t => t.from === days[dayIdx - 1] && t.to === day);
@@ -2079,37 +2080,21 @@ async function renderMap(byDay, days, dayNumMap) {
           color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7'
         }).addTo(map));
         addTravelIcon(via[0] || [(a[0] + coords[0][0]) / 2, (a[1] + coords[0][1]) / 2], ride.mode);
-      } else if (prevCoords && prevCoords.length) {
-        // Walked on from yesterday's last point: same solid line as within a day
-        const line = L.polyline([prevCoords[prevCoords.length - 1], coords[0]], {
-          color: color, weight: 2.5, opacity: 0.75
-        }).addTo(map);
-        markers.push(line);
       }
     }
 
-    // Within-day segments: solid on foot, dotted with an icon where TRAVEL says so
+    // Rides within the day
     const located = [...byDay[day]]
       .sort((a, b) => (a.Timestamp || '').localeCompare(b.Timestamp || ''))
       .filter(e => !isNaN(toFloat(e.Latitude)) && !isNaN(toFloat(e.Longitude)));
-    let walk = [];
-    const flushWalk = () => {
-      if (walk.length >= 2) markers.push(L.polyline(walk, { color: color, weight: 2.5, opacity: 0.75 }).addTo(map));
-      walk = [];
-    };
     located.forEach((e, i) => {
-      const c = [toFloat(e.Latitude), toFloat(e.Longitude)];
       const prev = located[i - 1];
       const trip = prev ? travelFor(day, prev, e) : null;
-      if (trip) {
-        flushWalk();
-        const p = [toFloat(prev.Latitude), toFloat(prev.Longitude)];
-        markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7' }).addTo(map));
-        addTravelIcon([(p[0] + c[0]) / 2, (p[1] + c[1]) / 2], trip.mode);
-      }
-      walk.push(c);
+      if (!trip) return;
+      const p = [toFloat(prev.Latitude), toFloat(prev.Longitude)], c = [toFloat(e.Latitude), toFloat(e.Longitude)];
+      markers.push(L.polyline([p, c], { color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7' }).addTo(map));
+      addTravelIcon([(p[0] + c[0]) / 2, (p[1] + c[1]) / 2], trip.mode);
     });
-    flushWalk();
   });
 
   // Place markers on top of lines
