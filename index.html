@@ -1209,9 +1209,8 @@ function draw(days) {
         }
 
       } else if(ring.type === 'km') {
-        // Daily distance from the Biometrics tab, rounded, with a small "km" under it; 50 km+ days drawn bigger
-        const big = val >= 50;
-        const numSize = Math.max(7, ringW * (big ? 0.46 : 0.34));
+        // Daily distance from the Biometrics tab, rounded, with a small "km" under it; 50 km+ days bigger, over 60 km bigger still
+        const numSize = Math.max(7, ringW * (val > 60 ? 0.58 : val >= 50 ? 0.46 : 0.34));
         const kx = cx + Math.cos(mid)*rMid, ky = cy + Math.sin(mid)*rMid;
         ctx.save();
         ctx.fillStyle = ring.color;
