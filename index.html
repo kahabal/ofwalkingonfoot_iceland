@@ -137,6 +137,10 @@ body::before {
 .bio-tog .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .bio-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; margin-bottom: 8px; }
 .bio-chart { position: relative; height: 460px; }
+#bio-multi { display: none; }   /* phone only: one small chart per measure */
+.bio-mini { border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px 6px; margin-bottom: 10px; }
+.bio-mini h3 { font-family: var(--font-mono); font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+.bio-mini-chart { position: relative; height: 130px; }
 
 /* ── DIARY VIEW ── */
 #diary-status {
@@ -368,6 +372,9 @@ body::before {
   .bio-card .v { font-size: 24px; }
   #bio-toggles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bio-chart { height: 340px; }
+  /* One small chart per measure instead of the combined chart with its checkboxes */
+  #bio-wrap .bio-panel { display: none; }
+  #bio-multi { display: block; }
   .detail-grid { grid-template-columns: 1fr; }
 }
 </style>
@@ -444,6 +451,7 @@ body::before {
       <span class="bio-range" id="bio-range">Loading…</span>
     </div>
     <div id="bio-cards"></div>
+    <div id="bio-multi"></div>
     <section class="bio-panel">
       <div class="bio-controls">
         <span class="bio-seg"><button id="bio-norm" class="on">Normalized (0–100%)</button><button id="bio-abs">Absolute scale</button></span>
@@ -2218,6 +2226,40 @@ async function bioInit() {
   document.getElementById('bio-all').onclick = () => { Object.keys(BIO_METRICS).forEach(k => bioActive.add(k)); bioRenderToggles(); bioUpdate(); };
   document.getElementById('bio-none').onclick = () => { bioActive.clear(); bioRenderToggles(); bioUpdate(); };
   bioInitChart();
+  if (isPhone()) bioInitMulti();
+}
+
+// Phone: one small chart per measure, stacked, each on its own real scale (the combined chart and
+// its checkboxes are hidden in the phone CSS)
+const BIO_MULTI_ORDER = ['steps', 'total_calories_kcal', 'gain_meters', 'avg_walking_hr', 'cardio_load', 'walking_skin_temp', 'sleep_score'];
+function bioInitMulti() {
+  const box = document.getElementById('bio-multi');
+  box.innerHTML = BIO_MULTI_ORDER.map(k =>
+    `<section class="bio-mini"><h3 style="color:${BIO_METRICS[k].color}">${BIO_METRICS[k].label}</h3><div class="bio-mini-chart"><canvas id="bio-mini-${k}"></canvas></div></section>`).join('');
+  const tick = { color: '#8a7a68', font: { family: 'JetBrains Mono', size: 10 } };
+  BIO_MULTI_ORDER.forEach(k => {
+    const m = BIO_METRICS[k];
+    new Chart(document.getElementById('bio-mini-' + k).getContext('2d'), {
+      type: 'line',
+      data: { labels: bioData.map(d => d.date.slice(0, 5)),
+              datasets: [{ data: bioData.map(d => d[k]), borderColor: m.color, backgroundColor: m.color + '22', fill: true,
+                           borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.2, spanGaps: true }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: '#2a2118', titleColor: '#f2ede3', bodyColor: '#e3dccd', displayColors: false,
+                     titleFont: { family: 'JetBrains Mono' }, bodyFont: { family: 'JetBrains Mono', size: 11 },
+                     callbacks: { label: c => { const d = bioData[c.dataIndex]; return d[k] == null ? 'N/A' : m.fmt(d[k], d); } } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { ...tick, maxTicksLimit: 5, maxRotation: 0 } },
+          y: { grid: { color: '#e3dccd' }, ticks: { ...tick, maxTicksLimit: 4 } }
+        }
+      }
+    });
+  });
 }
 
 function bioRenderCards() {
