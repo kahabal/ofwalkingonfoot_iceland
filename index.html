@@ -263,6 +263,8 @@ body::before {
 .leaflet-bar a, .leaflet-bar a:hover { background: #d9d6cf; color: #4a4038; border-bottom-color: #b9b4aa; }
 .leaflet-bar a:hover { background: #ccc8c0; }
 .story-icon { font-family: 'Noto Color Emoji', sans-serif; font-size: 34px; line-height: 40px;   /* same size as the Play pop-ups */ text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+/* Custom image icons (icons/ folder): the same size as an emoji icon */
+.enc-img { width: 1.15em; height: 1.15em; object-fit: contain; vertical-align: middle; display: inline-block; }
 /* Story hover label: the same terracotta label as the Play pop-ups */
 .leaflet-tooltip.story-tip { background: #8e3a2d; color: #fff; font-family: var(--font-mono); font-size: 12px; padding: 3px 8px;
                              border: none; border-radius: 3px; box-shadow: none; white-space: nowrap; }
@@ -2273,13 +2275,19 @@ function encounterPoint(r) {
   return near ? L.latLng(toFloat(near.Latitude), toFloat(near.Longitude)) : null;
 }
 
+// An encounter's Icon cell: an emoji, or the name of an image in the icons/ folder (e.g. trolley_crash.png)
+function encounterIconHTML(icon) {
+  const v = (icon || '').trim();
+  return /\.(png|svg|jpe?g|webp|gif)$/i.test(v) ? `<img class="enc-img" src="icons/${encodeURIComponent(v)}" alt="">` : v;
+}
+
 // Story overlay: every encounter as its icon, the name on hover or tap
 function renderStory() {
   storyLayer.clearLayers();
   trackerEncounters.forEach(r => {
     const pt = encounterPoint(r);
     if (!pt) return;
-    L.marker(pt, { icon: L.divIcon({ className: 'story-icon', html: r.Icon, iconSize: [40, 40] }) })
+    L.marker(pt, { icon: L.divIcon({ className: 'story-icon', html: encounterIconHTML(r.Icon), iconSize: [40, 40] }) })
       .bindTooltip(r.Text || '', { direction: 'top', offset: [0, -18], className: 'story-tip' })
       .addTo(storyLayer);
   });
@@ -2435,7 +2443,7 @@ function playFrame(now) {
     e.shown = true;
     if (!map.getPane('playEnc')) map.createPane('playEnc').style.zIndex = 655;   // just under the dot
     L.marker(e.pt, { pane: 'playEnc', interactive: false, icon: L.divIcon({ className: '', iconSize: [0, 0],
-      html: `<div class="enc-pop"><span class="enc-icon">${e.icon}</span>${e.text ? `<span class="enc-text">${e.text}</span>` : ''}</div>` }) })
+      html: `<div class="enc-pop"><span class="enc-icon">${encounterIconHTML(e.icon)}</span>${e.text ? `<span class="enc-text">${e.text}</span>` : ''}</div>` }) })
       .addTo(p.drawn);
   });
   // GPS misses distance on foot, so the counter is scaled to end on the published total
