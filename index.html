@@ -216,6 +216,13 @@ body::before {
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
 #log-col { overflow-y: scroll; height: 100%; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+/* Phone only (see PHONE below): the sheet's header and the map's Diary button */
+#log-sheet-head { display: none; position: sticky; top: 0; z-index: 2; align-items: center; justify-content: space-between;
+                  padding: 10px 16px; background: var(--paper); border-bottom: 1px solid var(--border);
+                  font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+#log-sheet-head button { background: none; border: none; font-size: 18px; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.log-btn { display: none; background: var(--paper); border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px;
+           font-family: var(--font-mono); font-size: 12px; color: #8e3a2d; cursor: pointer; }
 #log-col::-webkit-scrollbar { width: 6px; }
 #log-col::-webkit-scrollbar-track { background: transparent; }
 #log-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -331,8 +338,17 @@ body::before {
   .tab-btn:last-child { margin-right: 0; }
   .stat-cell { padding: 6px 10px; }
   .stat-num { font-size: 20px; }
-  #tracker-layout { grid-template-rows: 33vh 1fr; }
-  #map-col { border-right: none; border-bottom: 1px solid var(--border); }
+  /* The map fills the screen; the day list is a sheet that slides up over it (Diary button) */
+  #tracker-layout { display: block; position: relative; }
+  #map-col { height: 100%; border-right: none; }
+  #log-col { position: absolute; left: 0; right: 0; bottom: 0; height: 78%; z-index: 1200; background: var(--paper);
+             border-top: 1px solid var(--border); border-radius: 10px 10px 0 0; box-shadow: 0 -4px 14px rgba(0,0,0,.15);
+             transform: translateY(102%); transition: transform .3s ease; }
+  #tracker-layout.log-open #log-col { transform: none; }
+  #log-sheet-head { display: flex; }
+  .log-btn { display: block; }
+  /* Keep the map credits to the right half so they don't cover the Play button */
+  #map .leaflet-control-attribution { max-width: 55%; font-size: 9px; line-height: 1.3; }
   .day-heading { padding: 12px 16px 10px; flex-wrap: wrap; }
   .entry { padding: 12px 16px; }
   #detail-modal { padding: 10px; }
@@ -400,6 +416,7 @@ body::before {
   <div id="tracker-layout">
     <div id="map-col"><div id="map"></div></div>
     <div id="log-col">
+      <div id="log-sheet-head"><span>Field diary</span><button onclick="toggleLogSheet(false)" aria-label="Close">✕</button></div>
       <div id="log-list"></div>
       <div id="foot">Of Walking on Foot · Iceland · Updates daily at midnight</div>
     </div>
@@ -2025,6 +2042,26 @@ function scheduleMidnightRefresh() {
   }, msUntilMidnight);
 }
 const ICELAND_BOUNDS = [[63.3, -24.6], [66.6, -13.4]];
+
+// Phones: the day list is a sheet over the full-screen map, opened by a Diary button on the map
+// (the button and the sheet styling only exist in the phone CSS; on wider screens the list sits beside the map)
+function toggleLogSheet(open) {
+  const layout = document.getElementById('tracker-layout');
+  layout.classList.toggle('log-open', open === undefined ? !layout.classList.contains('log-open') : open);
+}
+function addLogButton() {
+  const Ctl = L.Control.extend({
+    onAdd() {
+      const btn = L.DomUtil.create('button', 'log-btn');
+      btn.textContent = '☰ Diary';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', () => toggleLogSheet(true));
+      return btn;
+    }
+  });
+  new Ctl({ position: 'topleft' }).addTo(map);
+  map.on('click', () => toggleLogSheet(false));   // a tap on the map closes the sheet
+}
 function initMap() {
   // Gentler mouse wheel: a quarter-level per step instead of a full level (the +/− buttons still step by 1)
   map = L.map('map', { zoomControl: true, attributionControl: true, zoomSnap: 0.25, zoomDelta: 1, wheelPxPerZoomLevel: 150 });
@@ -2036,6 +2073,7 @@ function initMap() {
   map.fitBounds(ICELAND_BOUNDS);   // the whole island, whatever the screen size
   addGpsTracksLayer();
   addPhotosLayer();
+  addLogButton();
   // Story (the encounters, off at first) and Notes (the blue day markers, on) in the same checkbox box
   storyLayer = L.layerGroup();
   layersControl.addOverlay(storyLayer, 'Story');
