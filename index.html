@@ -1835,14 +1835,17 @@ const TRAVEL = [
   { date:'03/07/2026', from:'13:42', to:'17:30', mode:'car' },   // lift back to town after the 40 km hike
   { date:'21/07/2026', from:'12:20', to:'18:55', mode:'car' },   // back down from the mountain
   { date:'23/07/2026', from:'12:12', to:'13:16', mode:'car' },   // hitchhiking through the tunnel
+  { date:'25/07/2026', from:'10:00', to:'21:42', mode:'car' },   // back from Siglufjörður to the camp
   { date:'02/08/2026', from:'12:00', to:'17:48', mode:'car' },   // back from Drangajökull with an Icelandic couple
   { date:'14/08/2026', from:'13:00', to:'15:00', mode:'ferry' },
 ];
 // Rides between the last entry of one day and the first of the next.
 // via (optional): points the line passes through; the icon sits on the first one, else at the midpoint.
+// start (optional): where the ride starts, when that isn't the day's last entry (e.g. the camp the GPS track ended at).
 const TRAVEL_OVERNIGHT = [
   { from:'08/07/2026', to:'09/07/2026', mode:'car' },                                    // hitchhiked back from the cliffs to the tent
   { from:'15/07/2026', to:'16/07/2026', mode:'car' },                                    // Jack, to the campsite after the windstorm
+  { from:'24/07/2026', to:'25/07/2026', mode:'car', start:[65.8980, -19.4055] },         // from the camp to Siglufjörður (rest day)
   { from:'06/08/2026', to:'07/08/2026', mode:'car' },                                    // lift through the tunnel
   { from:'21/08/2026', to:'22/08/2026', mode:'car' },                                    // lift from Gröf after leaving the trolley
   { from:'22/08/2026', to:'23/08/2026', mode:'car' },                                    // to Langaholt for the filming
@@ -2222,12 +2225,23 @@ function startPlay() {
     .map(f => ({ date: dateKey(f.properties.date), key: dateKey(f.properties.date) + (f.properties.start || ''),
                  pts: f.geometry.coordinates.map(c => L.latLng(c[1], c[0])) }))
     .sort((a, b) => a.key.localeCompare(b.key));
+  // The rides drawn on the map (dashed lines), in time order. A gap between two tracks follows the rides in between
+  // that start where the dot already is (within 3 km); a ride far from there was recorded by the GPS already
+  const ridePaths = markers.filter(m => m instanceof L.Polyline && m.options.rideKey)
+    .map(m => ({ key: m.options.rideKey, pts: m.getLatLngs() }))
+    .sort((a, b) => a.key.localeCompare(b.key));
   // key / until: when the segment starts and when the next track (or entry) starts, as YYYYMMDDHH:MM,
   // so a ride only shows once the dot gets to it in time (see playFrame)
   const segs = [];
   tracks.forEach((t, i) => {
     const next = tracks[i + 1] ? tracks[i + 1].key : '99';
-    if (i) segs.push({ pts: [tracks[i - 1].pts[tracks[i - 1].pts.length - 1], t.pts[0]], gap: true, key: tracks[i - 1].key, until: t.key });
+    if (i) {
+      const a = tracks[i - 1], pts = [a.pts[a.pts.length - 1]];
+      ridePaths.filter(r => r.key > a.key && r.key < t.key).forEach(r => {
+        if (r.pts[0].distanceTo(pts[pts.length - 1]) < 3000) pts.push(...r.pts);
+      });
+      segs.push({ pts: [...pts, t.pts[0]], gap: true, key: a.key, until: t.key });
+    }
     segs.push({ pts: t.pts, gap: false, key: t.key, until: next });
   });
   // After the last track: the diary entries of the following days, through any ride's via points
@@ -2572,7 +2586,7 @@ async function renderMap(byDay, days, dayNumMap) {
       const prevCoords = dayCoordMap[days[dayIdx - 1]];
       const ride = TRAVEL_OVERNIGHT.find(t => t.from === days[dayIdx - 1] && t.to === day);
       if (prevCoords && prevCoords.length && ride) {
-        const a = prevCoords[prevCoords.length - 1], via = ride.via || [];
+        const a = ride.start || prevCoords[prevCoords.length - 1], via = ride.via || [];
         markers.push(L.polyline([a, ...via, coords[0]], {
           color: color, weight: 2.5, opacity: 0.85, dashArray: '2 7', rideDate: days[dayIdx - 1],
           rideKey: dateKey(days[dayIdx - 1]) + '24:00'   // overnight: after everything that day, for Play
