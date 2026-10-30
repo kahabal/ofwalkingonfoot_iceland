@@ -1718,12 +1718,8 @@ function setupCanvasEvents(canvas, days) {
     const mx = (e.clientX - wRect.left - zoomTx) / zoomScale;
     const my = (e.clientY - wRect.top  - zoomTy) / zoomScale;
 
-    // Note click → open tracker centered on that day's GPS with note
-    const noteHitClick = nearestHit(noteHitAreas, mx, my);
-    if(noteHitClick) {
-      openInTracker(noteHitClick.lat, noteHitClick.lon, noteHitClick.note, noteHitClick.dayNum, noteHitClick.date);
-      return;
-    }
+    // Only the GPS pin opens the tracker (a note just shows its text on hover)
+    if(nearestHit(noteHitAreas, mx, my)) return;
 
     // GPS click → open tracker centered on that pin
     const gpsHit = nearestHit(gpsHitAreas, mx, my);
@@ -1815,12 +1811,12 @@ function setupCanvasEvents(canvas, days) {
     const gpsHit  = noteHit ? null : nearestHit(gpsHitAreas, mx, my);
     const target  = noteHit ? 'note' + noteHit.dayNum : gpsHit ? 'gps' + gpsHit.dayNum : null;
 
-    if(target && target === tapTarget) {
+    // A second tap on the same GPS pin opens the tracker; notes only show their text
+    if(gpsHit && target === tapTarget) {
       tapTarget = null;
       document.getElementById('dnp').classList.remove('show');
       hideTooltip();
-      if(noteHit) openInTracker(noteHit.lat, noteHit.lon, noteHit.note, noteHit.dayNum, noteHit.date);
-      else if(gpsHit.lat && gpsHit.lon) openInTracker(gpsHit.lat, gpsHit.lon, null, gpsHit.dayNum, null);
+      if(gpsHit.lat && gpsHit.lon) openInTracker(gpsHit.lat, gpsHit.lon, null, gpsHit.dayNum, null);
       return;
     }
     tapTarget = target;
