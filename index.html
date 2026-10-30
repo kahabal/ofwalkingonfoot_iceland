@@ -176,6 +176,9 @@ body::before {
 .stat-cell { flex: 1; min-width: 80px; padding: 8px 16px; border-right: 1px solid var(--border); text-align: center; }
 .stat-cell:last-child { border-right: none; }
 .stat-num { font-size: 22px; font-weight: 300; color: var(--accent); display: block; line-height: 1; }
+.stat-line { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat-line .stat-num { display: inline; margin-right: 4px; vertical-align: -2px; }
+.stat-sep { margin: 0 10px; color: var(--border); }
 .stat-label { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 3px; display: block; }
 #tracker-layout { display: grid; grid-template-columns: 1fr 380px; flex: 1; overflow: hidden; min-height: 0; }
 @media (max-width: 900px) { #tracker-layout { grid-template-columns: 1fr; } }
@@ -368,7 +371,7 @@ body::before {
 <!-- TRACKER VIEW -->
 <div id="view-tracker">
   <div id="stats-bar">
-    <div class="stat-cell"><span class="stat-num" id="stat-days">—</span><span class="stat-label">Days on foot</span></div>
+    <div class="stat-cell stat-line"><span class="stat-num">84</span> active walking days <span class="stat-sep">/</span> <span class="stat-num">3200</span> km on foot</div>
   </div>
   <div id="tracker-layout">
     <div id="map-col"><div id="map"></div></div>
@@ -2359,7 +2362,6 @@ async function loadData() {
       markers = [];
       if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
       document.getElementById('log-list').innerHTML = '<div style="padding:24px 18px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">No entries in sheet yet.</div>';
-      document.getElementById('stat-days').textContent = '0';
       hideLoading();
       return;
     }
@@ -2426,9 +2428,6 @@ function render() {
 
   // Assign colors per day
   days.forEach((d, i) => { dayColors[d] = dayColorAt(days.length > 1 ? i / (days.length - 1) : 0); });
-
-  // Stats — days only
-  document.getElementById('stat-days').textContent = days.length;
 
   // Render map and log, passing dayNumMap so markers show correct numbers
   renderMap(byDay, days, dayNumMap);
