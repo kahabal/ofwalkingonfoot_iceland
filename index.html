@@ -2980,7 +2980,7 @@ function renderLog(byDay, days, dayNumMap) {
 
       el.innerHTML = `
         <div class="entry-time">${e.Time || ''}</div>
-        <div class="entry-weather">${weatherIcon} ${e.Weather_Auto || e.Weather || '—'} ${temp}</div>
+        ${weatherCompHTML ? '' : `<div class="entry-weather">${weatherIcon} ${e.Weather_Auto || e.Weather || '—'} ${temp}</div>`}
         <div class="entry-fields">${fieldTags}</div>
         ${windCompHTML}
         ${weatherCompHTML}
