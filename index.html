@@ -312,6 +312,8 @@ body::before {
 /* The title while the page loads: the top bar's font, big, dissolving as the radial starts composing */
 .loading-title { font-size: clamp(34px, 7vw, 88px); font-weight: 300; font-style: italic; text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: 0 16px; }
 .loading-sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.loading-bar { width: min(260px, 60vw); height: 2px; margin-top: 6px; background: var(--border); border-radius: 1px; overflow: hidden; }
+#loading-fill { width: 8%; height: 100%; background: #8e3a2d; transition: width .4s ease; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -347,6 +349,7 @@ body::before {
 
 <div id="loading-screen">
   <div class="loading-title">A Loud Solitude</div>
+  <div class="loading-bar"><div id="loading-fill"></div></div>
   <div class="loading-sub" id="loading-msg"></div>
 </div>
 
@@ -1832,6 +1835,14 @@ function buildLegend() {
 // ─────────────────────────────────────────────
 let sharedDemoDays = null; // shared between diary and tracker
 
+// Loading bar on the title screen: it starts a little filled and grows as each part of the data arrives
+const LOADING_STEPS = 3;
+let loadingDone = 0;
+function setLoadingBar(f) { document.getElementById('loading-fill').style.width = Math.round(Math.max(0.08, f) * 100) + '%'; }
+function loadingStep(promise) {
+  return promise.finally(() => { loadingDone++; setLoadingBar(0.1 + 0.8 * loadingDone / LOADING_STEPS); });
+}
+
 async function diaryInit() {
   buildLegend();
   let days=[];
@@ -1841,18 +1852,21 @@ async function diaryInit() {
       sharedDemoDays = days; // share with tracker
       document.getElementById('diary-status').textContent=`DEMO · ${days.length} days · ${days.reduce((n,d)=>n+d.entries.length,0)} entries · Set USE_DEMO=false for live data`;
     } else {
-      const res = await fetch(SHEET_URL + '&t=' + Date.now() + '&r=' + Math.random(), {
+      // Diary, Biometrics and the icon images load at the same time; each one fills a part of the loading bar
+      const diaryReq = loadingStep(fetch(SHEET_URL + '&t=' + Date.now() + '&r=' + Math.random(), {
         cache: 'no-store',
         headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-      });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const entries = d_parseCSV(await res.text());
+      }).then(res => { if(!res.ok) throw new Error('HTTP '+res.status); return res.text(); }));
+      const bioReq = loadingStep(fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).catch(() => null));
+      const iconsReq = loadingStep(loadIconImages());
+      const entries = d_parseCSV(await diaryReq);
       days = groupByDay(entries);
-      try {
-        const bio = d_parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
-        const byDate = Object.fromEntries(bio.map(b => [b.Date, b]));
+      const bioText = await bioReq;
+      if (bioText) {   // without it the radial still draws, just without the distance ring
+        const byDate = Object.fromEntries(d_parseCSV(bioText).map(b => [b.Date, b]));
         days.forEach(d => { d.bio = byDate[d.date] || null; });
-      } catch(e) { /* radial still draws without the distance ring */ }
+      }
+      await iconsReq;
       const sample = entries[0] ? Object.keys(entries[0]).slice(0,5).join(', ') : 'none';
       document.getElementById('diary-status').textContent =
         `${days.length} days · ${entries.length} entries · fields: ${sample}`;
@@ -1861,7 +1875,8 @@ async function diaryInit() {
     document.getElementById('diary-status').textContent='⚠ '+e.message;
   }
 
-  await loadIconImages();
+  await loadIconImages();   // already loaded above; this only waits in demo mode or after an error
+  setLoadingBar(1);
   draw(days);
   radialIntro = { start: performance.now() + RADIAL_INTRO_DELAY };   // first load only: diaryInit runs once
   captureStatic();
