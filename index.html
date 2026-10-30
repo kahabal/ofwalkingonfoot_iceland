@@ -1388,10 +1388,12 @@ function captureStatic() {
 }
 
 // ─────────────────────────────────────────────
-// INTRO: on the first load the radial is revealed day by day, a slice sweeping
-// from the last day round to Day 1 (the drawn image shown through a growing pie slice)
+// INTRO: on the first load the whole radial is shown in the area and revealed day by day, a slice
+// sweeping from Day 1 round to the last day (the drawn image through a growing pie slice);
+// then the view glides in, twice as close, on Reykjavík
 // ─────────────────────────────────────────────
 const RADIAL_INTRO_DELAY = 700, RADIAL_INTRO_MS = 3000;   // after the loading screen fades
+const RADIAL_ZOOM_MS = 1500;   // then the glide in to Reykjavík
 let radialIntro = null;
 function radialIntroPaint(now) {
   const canvas = document.getElementById('dial'), ctx = canvas.getContext('2d');
@@ -1405,8 +1407,7 @@ function radialIntroPaint(now) {
   if (e > 0) {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    // Clockwise from the start line: from the last day back to Day 1, so the zoomed-in top half fills first
-    ctx.arc(cx, cy, canvas.width, START_ANGLE, START_ANGLE + e * Math.PI * 2);
+    ctx.arc(cx, cy, canvas.width, START_ANGLE, START_ANGLE - e * Math.PI * 2, true);   // the days run counterclockwise
     ctx.closePath();
     ctx.clip();
     ctx.drawImage(staticCanvas, 0, 0);
@@ -1417,7 +1418,7 @@ function radialIntroPaint(now) {
 function radialIntroFrame(now) {
   if (!radialIntro || !staticCanvas) return;
   if (radialIntroPaint(now) < 1) requestAnimationFrame(radialIntroFrame);
-  else radialIntro = null;
+  else { radialIntro = null; animateRadialView(radialStartView(), RADIAL_ZOOM_MS); }
 }
 
 // ─────────────────────────────────────────────
@@ -1539,19 +1540,39 @@ function zoomBy(factor) {
   zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, factor, canvas);
 }
 
-// Opening view. On phones start at half size, centred sideways, so more of the circle shows.
-function resetZoom() {
-  const canvas = document.getElementById('dial');
-  const wrapW = document.getElementById('diary-canvas-wrap').clientWidth;
-  if(window.innerWidth <= 700) {
-    zoomScale = 0.5;
-    zoomTx = (wrapW - parseFloat(canvas.style.width) * zoomScale) / 2;
-  } else {
-    zoomScale = 1; zoomTx = 0;
-  }
-  zoomTy = 0;
-  applyZoom(canvas);
+// Views. Fit: the whole circle in the area (while the intro builds it).
+// Start: twice that, centred on the start line at Reykjavík (after the intro, and the reset button).
+function radialFitView() {
+  const canvas = document.getElementById('dial'), wrap = document.getElementById('diary-canvas-wrap');
+  const size = parseFloat(canvas.style.width), W = wrap.clientWidth, H = wrap.clientHeight;
+  const s = Math.min(W, H) / size;
+  return { s, tx: (W - size * s) / 2, ty: (H - size * s) / 2 };
 }
+function radialStartView() {
+  const canvas = document.getElementById('dial'), wrap = document.getElementById('diary-canvas-wrap');
+  const size = parseFloat(canvas.style.width), W = wrap.clientWidth, H = wrap.clientHeight;
+  const s = radialFitView().s * 2, R = size * 0.38;   // between the middle rings and the REYKJAVÍK label
+  const px = size / 2 + Math.cos(START_ANGLE) * R, py = size / 2 + Math.sin(START_ANGLE) * R;
+  return { s, tx: W / 2 - px * s, ty: H / 2 - py * s };
+}
+function setRadialView(v) {
+  zoomScale = v.s; zoomTx = v.tx; zoomTy = v.ty;
+  applyZoom(document.getElementById('dial'));
+}
+// Glide to a view; stops as soon as the viewer pans or zooms themselves
+function animateRadialView(to, ms) {
+  const from = { s: zoomScale, tx: zoomTx, ty: zoomTy }, t0 = performance.now();
+  let last = from;
+  const step = now => {
+    if (zoomScale !== last.s || zoomTx !== last.tx || zoomTy !== last.ty) return;   // viewer took over
+    const t = Math.min(1, (now - t0) / ms), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    last = { s: from.s + (to.s - from.s) * e, tx: from.tx + (to.tx - from.tx) * e, ty: from.ty + (to.ty - from.ty) * e };
+    setRadialView(last);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function resetZoom() { setRadialView(radialStartView()); }
 
 // ─────────────────────────────────────────────
 // EVENTS
@@ -1850,7 +1871,7 @@ async function diaryInit() {
   captureStatic();
   requestAnimationFrame(radialIntroFrame);
   setupCanvasEvents(document.getElementById('dial'), days);
-  resetZoom();
+  setRadialView(radialFitView());   // the whole circle while the intro builds it, then radialIntroFrame zooms in
   // Canvas doesn't wait for web fonts: once the emoji glyphs arrive, draw again
   drawnIcons.add('📍');
   document.fonts.load(`16px ${EMOJI_FONT}`, [...drawnIcons].join(''))
