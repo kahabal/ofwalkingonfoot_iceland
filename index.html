@@ -262,6 +262,7 @@ body::before {
 #detail-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); }
 .leaflet-bar a, .leaflet-bar a:hover { background: #d9d6cf; color: #4a4038; border-bottom-color: #b9b4aa; }
 .leaflet-bar a:hover { background: #ccc8c0; }
+.story-icon { font-family: 'Noto Color Emoji', sans-serif; font-size: 24px; line-height: 30px; text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
 .play-btn { background: #8e3a2d; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; color: #fff; cursor: pointer; }
 .play-btn:hover { background: #a24a3b; }
 /* Encounter during Play: the icon pops up out of the map, then its label fades in; both stay */
@@ -1976,6 +1977,11 @@ function initMap() {
   map.fitBounds(ICELAND_BOUNDS);   // the whole island, whatever the screen size
   addGpsTracksLayer();
   addPhotosLayer();
+  // Story (the encounters, off at first) and Notes (the blue day markers, on) in the same checkbox box
+  storyLayer = L.layerGroup();
+  layersControl.addOverlay(storyLayer, 'Story');
+  notesLayer = L.layerGroup().addTo(map);
+  layersControl.addOverlay(notesLayer, 'Notes');
 }
 
 // Photos on the map: photos.json lists them, photos/ holds the web copies, photos/thumbs/ the round markers.
@@ -2219,6 +2225,7 @@ const PLAY_SETTLE_MS = 2500; // time the camera gets to settle on the arrival be
 const PLAY_TOTAL_KM = 3208;  // the published total the km counter ends on (same as the Biometrics tab)
 const dateKey = s => (s || '').split('/').reverse().join('');   // DD/MM/YYYY → YYYYMMDD, sortable
 let gpsTracksLayer = null, gpsTracksData = null, photosLayer = null, photosList = [], play = null;
+let notesLayer = null, storyLayer = null;
 
 // The Play button appears only once both the GPS tracks and the diary entries are on the map
 const playReady = { tracks: false, entries: false, shown: false };
@@ -2251,6 +2258,27 @@ function playRouteAt(segs, pt, key) {
   let at = Infinity, best = Infinity;
   cands.forEach(s => s.pts.forEach((q, i) => { const m = q.distanceTo(pt); if (m < best) { best = m; at = s.from + s.cum[i]; } }));
   return at;
+}
+
+// An encounter's place: its own coordinates, or without them the diary entry closest in time that day
+function encounterPoint(r) {
+  if (!isNaN(toFloat(r.Latitude)) && !isNaN(toFloat(r.Longitude))) return L.latLng(toFloat(r.Latitude), toFloat(r.Longitude));
+  const time = (r.Time || '12:00').slice(0, 5), mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+  const near = allEntries.filter(e => e.Date === r.Date && hasCoords(e))
+    .sort((a, b) => Math.abs(mins(a.Time) - mins(time)) - Math.abs(mins(b.Time) - mins(time)))[0];
+  return near ? L.latLng(toFloat(near.Latitude), toFloat(near.Longitude)) : null;
+}
+
+// Story overlay: every encounter as its icon, the name on hover or tap
+function renderStory() {
+  storyLayer.clearLayers();
+  trackerEncounters.forEach(r => {
+    const pt = encounterPoint(r);
+    if (!pt) return;
+    L.marker(pt, { icon: L.divIcon({ className: 'story-icon', html: r.Icon, iconSize: [30, 30] }) })
+      .bindTooltip(r.Text || '', { direction: 'top', offset: [0, -14] })
+      .addTo(storyLayer);
+  });
 }
 
 function startPlay() {
@@ -2304,9 +2332,9 @@ function startPlay() {
   });
   if (!total) return;
 
+  // Photos, the blue day markers (Notes) and Story are hidden while it plays, and come back as they were
   const photosOn = photosLayer && map.hasLayer(photosLayer);
-  // The blue day markers are hidden while it plays
-  const dayMarkers = markers.filter(m => m instanceof L.Marker && m.options.interactive !== false && map.hasLayer(m));
+  const notesOn = map.hasLayer(notesLayer), storyOn = map.hasLayer(storyLayer);
   // Rides (dashed line + its icon, added right after it) are hidden too and appear when the dot gets to them in time
   const rides = [];
   markers.forEach((m, i) => {
@@ -2314,18 +2342,11 @@ function startPlay() {
     const icon = markers[i + 1] instanceof L.Marker && markers[i + 1].options.interactive === false ? markers[i + 1] : null;
     rides.push({ layers: icon ? [m, icon] : [m], key: m.options.rideKey || '' });
   });
-  // Encounters: a place (or, without one, the diary entry closest in time that day) and a time
+  // Encounters: where and when, and the point of the route where the dot passes them
   const encounters = trackerEncounters.map(r => {
-    let pt = !isNaN(toFloat(r.Latitude)) && !isNaN(toFloat(r.Longitude)) ? L.latLng(toFloat(r.Latitude), toFloat(r.Longitude)) : null;
-    const time = (r.Time || '12:00').slice(0, 5);
-    if (!pt) {
-      const mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
-      const near = allEntries.filter(e => e.Date === r.Date && hasCoords(e))
-        .sort((a, b) => Math.abs(mins(a.Time) - mins(time)) - Math.abs(mins(b.Time) - mins(time)))[0];
-      if (near) pt = L.latLng(toFloat(near.Latitude), toFloat(near.Longitude));
-    }
+    const pt = encounterPoint(r);
     if (!pt) return null;
-    return { pt, at: playRouteAt(segs, pt, dateKey(r.Date) + time), icon: r.Icon, text: r.Text || '' };
+    return { pt, at: playRouteAt(segs, pt, dateKey(r.Date) + (r.Time || '12:00').slice(0, 5)), icon: r.Icon, text: r.Text || '' };
   }).filter(Boolean);
   // One photo per day for the thumbnail: the captioned one if there is one, else the middle one of the day
   const byDate = {};
@@ -2335,7 +2356,7 @@ function startPlay() {
     return { src: `photos/${ph.id}.jpg`, at: playRouteAt(segs, L.latLng(ph.lat, ph.lon), dateKey(ph.date) + ph.time) };
   }).sort((a, b) => a.at - b.at);
   play = { segs, total, walked, si: 0, phase: 'fade', t0: performance.now(), start: 0,
-           view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides, encounters, pics, pi: -1,
+           view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, notesOn, storyOn, rides, encounters, pics, pi: -1,
            drawn: null, line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
@@ -2368,7 +2389,8 @@ function playFrame(now) {
     // Faded: take the layers off the map for real, then show the panes again for what Play draws
     if (p.photosOn) map.removeLayer(photosLayer);
     map.removeLayer(gpsTracksLayer);
-    p.dayMarkers.forEach(m => map.removeLayer(m));
+    map.removeLayer(notesLayer);
+    map.removeLayer(storyLayer);
     p.rides.forEach(r => r.layers.forEach(l => map.removeLayer(l)));
     playFadePanes('');
     p.drawn = L.layerGroup().addTo(map);
@@ -2447,7 +2469,8 @@ function stopPlay() {
   p.pic.remove();
   gpsTracksLayer.addTo(map);
   if (p.photosOn) photosLayer.addTo(map);
-  p.dayMarkers.forEach(m => m.addTo(map));
+  if (p.notesOn) notesLayer.addTo(map);
+  if (p.storyOn) storyLayer.addTo(map);
   p.rides.forEach(r => r.layers.forEach(l => l.addTo(map)));
   map.setView(p.view.center, p.view.zoom, { animate: false });
   document.querySelector('.play-btn').innerHTML = '▶ Play';
@@ -2504,6 +2527,7 @@ async function loadData() {
     }
 
     render();
+    renderStory();
 
   } catch(e) {
     let msg = e.message;
@@ -2593,6 +2617,7 @@ async function fetchOSRMRoute(from, to) {
 async function renderMap(byDay, days, dayNumMap) {
   // Clear old layers
   markers.forEach(m => map.removeLayer(m));
+  notesLayer.clearLayers();
   markers = [];
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
 
@@ -2684,8 +2709,7 @@ async function renderMap(byDay, days, dayNumMap) {
         ${e.Note ? `<div class="popup-note">"${e.Note}"</div>` : ''}
       `);
       marker.on('click', () => openDetail(e));
-      marker.addTo(map);
-      markers.push(marker);
+      marker.addTo(notesLayer);   // the Notes checkbox
     });
   });
 
