@@ -2182,35 +2182,46 @@ function addPlayControl() {
       return btn;
     }
   });
-  new Ctl({ position: 'topleft' }).addTo(map);
+  new Ctl({ position: 'bottomleft' }).addTo(map);
 }
+
+const PLAY_LINE = { pane: 'gpsTracks', color: '#8e3a2d', weight: 3, opacity: 0.9, interactive: false };
+const PLAY_GAP  = { ...PLAY_LINE, weight: 2.5, dashArray: '2 7' };   // rides and other jumps between tracks
 
 function startPlay() {
   if (!gpsTracksData || play) return;
-  // Tracks in walking order, each with the cumulative distance along it
+  // Tracks in walking order; between two tracks a straight "gap" segment, so the dot rides across instead of jumping
   const tracks = gpsTracksData.features
     .filter(f => f.geometry && f.geometry.type === 'LineString')
     .map(f => ({ key: f.properties.date.split('/').reverse().join('') + (f.properties.start || ''),
                  pts: f.geometry.coordinates.map(c => L.latLng(c[1], c[0])) }))
     .sort((a, b) => a.key.localeCompare(b.key));
+  const segs = [];
+  tracks.forEach((t, i) => {
+    if (i) segs.push({ pts: [tracks[i - 1].pts[tracks[i - 1].pts.length - 1], t.pts[0]], gap: true });
+    segs.push({ pts: t.pts, gap: false });
+  });
   let total = 0;
-  tracks.forEach(t => {
-    t.from = total;
-    t.cum = [0];
-    for (let i = 1; i < t.pts.length; i++) t.cum.push(t.cum[i - 1] + t.pts[i - 1].distanceTo(t.pts[i]));
-    total += t.cum[t.cum.length - 1];
+  segs.forEach(s => {
+    s.from = total;
+    s.cum = [0];
+    for (let i = 1; i < s.pts.length; i++) s.cum.push(s.cum[i - 1] + s.pts[i - 1].distanceTo(s.pts[i]));
+    total += s.cum[s.cum.length - 1];
   });
   if (!total) return;
 
   const photosOn = photosLayer && map.hasLayer(photosLayer);
-  play = { tracks, total, ti: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn,
-           drawn: L.layerGroup().addTo(map), line: null, dot: null, raf: 0 };
+  // The blue day markers are hidden while it plays (ride icons and ride lines stay)
+  const dayMarkers = markers.filter(m => m instanceof L.Marker && m.options.interactive !== false && map.hasLayer(m));
+  play = { segs, total, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers,
+           drawn: L.layerGroup().addTo(map), line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   if (photosOn) map.removeLayer(photosLayer);
   map.removeLayer(gpsTracksLayer);
-  play.line = L.polyline([], { pane: 'gpsTracks', color: '#8e3a2d', weight: 3, opacity: 0.9, interactive: false }).addTo(play.drawn);
-  if (!map.getPane('playDot')) map.createPane('playDot').style.zIndex = 660;   // above day markers and photos
-  play.dot = L.circleMarker(tracks[0].pts[0], { pane: 'playDot', radius: 7, weight: 2, color: '#fff', fillColor: '#d0261b', fillOpacity: 1, interactive: false }).addTo(map);
-  map.setView(tracks[0].pts[0], PLAY_ZOOM, { animate: false });
+  dayMarkers.forEach(m => map.removeLayer(m));
+  play.line = L.polyline([], PLAY_LINE).addTo(play.drawn);
+  if (!map.getPane('playDot')) map.createPane('playDot').style.zIndex = 660;   // above everything else on the map
+  play.dot = L.circleMarker(segs[0].pts[0], { pane: 'playDot', radius: 11, weight: 3, color: '#fff', fillColor: '#d0261b', fillOpacity: 1, interactive: false }).addTo(map);
+  map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
 
   // Anything the viewer does ends it (the button's own click is handled by the button)
@@ -2223,21 +2234,23 @@ function playFrame(now) {
   const p = play;
   if (!p) return;
   const d = Math.min(1, (now - p.start) / PLAY_MS) * p.total;
-  // Finished tracks stay drawn; a new line starts for the next one
-  while (p.ti < p.tracks.length - 1 && d >= p.tracks[p.ti + 1].from) {
-    p.line.setLatLngs(p.tracks[p.ti].pts);
-    p.ti++;
-    p.line = L.polyline([], { pane: 'gpsTracks', color: '#8e3a2d', weight: 3, opacity: 0.9, interactive: false }).addTo(p.drawn);
+  // Finished segments stay drawn; a new line (solid for a track, dashed for a gap) starts for the next one
+  while (p.si < p.segs.length - 1 && d >= p.segs[p.si + 1].from) {
+    p.line.setLatLngs(p.segs[p.si].pts);
+    p.si++;
+    p.line = L.polyline([], p.segs[p.si].gap ? PLAY_GAP : PLAY_LINE).addTo(p.drawn);
   }
-  const t = p.tracks[p.ti], along = d - t.from;
+  const s = p.segs[p.si], along = d - s.from;
   let i = 1;
-  while (i < t.cum.length - 1 && t.cum[i] < along) i++;
-  const seg = t.cum[i] - t.cum[i - 1], f = seg ? Math.min(1, Math.max(0, (along - t.cum[i - 1]) / seg)) : 1;
-  const a = t.pts[i - 1], b = t.pts[i] || a;
+  while (i < s.cum.length - 1 && s.cum[i] < along) i++;
+  const len = s.cum[i] - s.cum[i - 1], f = len ? Math.min(1, Math.max(0, (along - s.cum[i - 1]) / len)) : 1;
+  const a = s.pts[i - 1], b = s.pts[i] || a;
   const pos = L.latLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f);
-  p.line.setLatLngs(t.pts.slice(0, i).concat(pos));
+  p.line.setLatLngs(s.pts.slice(0, i).concat(pos));
   p.dot.setLatLng(pos);
-  map.panTo(pos, { animate: false });
+  // The camera eases after the dot instead of locking onto it, so GPS wiggles don't shake the map
+  p.cam = L.latLng(p.cam.lat + (pos.lat - p.cam.lat) * 0.04, p.cam.lng + (pos.lng - p.cam.lng) * 0.04);
+  map.panTo(p.cam, { animate: false });
   if (d >= p.total) setTimeout(stopPlay, 1500);   // hold the end for a moment, then back to normal
   else p.raf = requestAnimationFrame(playFrame);
 }
@@ -2252,6 +2265,7 @@ function stopPlay() {
   map.removeLayer(p.dot);
   gpsTracksLayer.addTo(map);
   if (p.photosOn) photosLayer.addTo(map);
+  p.dayMarkers.forEach(m => m.addTo(map));
   map.setView(p.view.center, p.view.zoom, { animate: false });
   document.querySelector('.play-btn').innerHTML = '▶ Play';
 }
