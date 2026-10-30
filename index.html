@@ -447,7 +447,12 @@ const RINGS = [
   { key:'Sleep_Quality', label:'Sleep',        icon:'🌙', color:'#d4956a', type:'iconscale'  },
   { key:'_encounters',   label:'Encounters',   icon:'🐾', color:'#7a8a5a', type:'encounters' },
   { key:'_gps',          label:'Location',     icon:'📍', color:'#c06050', type:'gps'        },
+  { key:'_km',           label:'Distance',     icon:'📏', color:'#2d5a8e', type:'km'         }, // from the Biometrics tab
 ];
+
+// Biometrics tab of the same published Sheet: one row per day (steps, distance, gain, HR, sleep...)
+const BIO_URL = SHEET_URL + '&gid=777001';
+const d_num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? null : n; };
 
 // Icon per level for each iconscale field (1→5)
 const LEVEL_ICONS = {
@@ -807,6 +812,9 @@ function dayValue(day, ring) {
   if (ring.type === 'gps') {
     return dayFirstGPS(day) ? 1 : null;
   }
+  if (ring.type === 'km') {
+    return day.bio ? d_num(day.bio.Distance_km) : null;
+  }
   return null;
 }
 
@@ -1134,6 +1142,16 @@ function draw(days) {
           const icon = levelMap ? levelMap[n-1] : ring.icon;
           drawIcon(ctx, icon, ix, iy, iconSize*1.05, 1);
         }
+
+      } else if(ring.type === 'km') {
+        // Daily distance from the Biometrics tab, rounded
+        ctx.save();
+        ctx.font = `bold ${Math.max(7, ringW*0.34)}px 'JetBrains Mono', monospace`;
+        ctx.fillStyle = ring.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(val), cx+Math.cos(mid)*rMid, cy+Math.sin(mid)*rMid);
+        ctx.restore();
 
       } else {
         // pace — use level icons
@@ -1486,6 +1504,8 @@ function setupCanvasEvents(canvas, days) {
           if(val.humans) parts.push('Humans');
           if(val.animStr) parts.push(val.animStr.split(/[;,]/).map(a=>a.trim()).filter(Boolean).join(', '));
           valStr = parts.join(', ');
+        } else if(hit.ring.type === 'km') {
+          valStr = `${val} km`;
         } else if(hit.ring.type === 'gps') {
           valStr = 'location recorded';
         } else if(hit.ring.type === 'note') {
@@ -1667,6 +1687,11 @@ async function diaryInit() {
       if(!res.ok) throw new Error('HTTP '+res.status);
       const entries = d_parseCSV(await res.text());
       days = groupByDay(entries);
+      try {
+        const bio = d_parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
+        const byDate = Object.fromEntries(bio.map(b => [b.Date, b]));
+        days.forEach(d => { d.bio = byDate[d.date] || null; });
+      } catch(e) { /* radial still draws without the distance ring */ }
       const sample = entries[0] ? Object.keys(entries[0]).slice(0,5).join(', ') : 'none';
       document.getElementById('diary-status').textContent =
         `${days.length} days · ${entries.length} entries · fields: ${sample}`;
