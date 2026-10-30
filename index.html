@@ -1366,7 +1366,7 @@ function captureStatic() {
 
 // ─────────────────────────────────────────────
 // INTRO: on the first load the radial is revealed day by day, a slice sweeping
-// from Day 1 round to the last day (the drawn image shown through a growing pie slice)
+// from the last day round to Day 1 (the drawn image shown through a growing pie slice)
 // ─────────────────────────────────────────────
 const RADIAL_INTRO_DELAY = 700, RADIAL_INTRO_MS = 3000;   // after the loading screen fades
 let radialIntro = null;
@@ -1382,7 +1382,8 @@ function radialIntroPaint(now) {
   if (e > 0) {
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, canvas.width, START_ANGLE, START_ANGLE - e * Math.PI * 2, true);   // the days run counterclockwise
+    // Clockwise from the start line: from the last day back to Day 1, so the zoomed-in top half fills first
+    ctx.arc(cx, cy, canvas.width, START_ANGLE, START_ANGLE + e * Math.PI * 2);
     ctx.closePath();
     ctx.clip();
     ctx.drawImage(staticCanvas, 0, 0);
