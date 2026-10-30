@@ -297,7 +297,7 @@ body::before {
 .play-pic.show { opacity: 1; }
 .play-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s ease; }
 .play-pic img.on { opacity: 1; }
-@media (max-width: 600px) { .play-pic { width: 84px; height: 112px; } }
+@media (max-width: 700px) { .play-pic { display: none; } }   /* phones: no photo thumbnail during Play */
 .play-km { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; pointer-events: none;
            background: #8e3a2d; color: #fff; font-family: var(--font-mono); font-size: 20px; padding: 6px 16px; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,.15); }
 #detail-nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
@@ -562,9 +562,10 @@ async function photosPageInit() {
   let list = photosList;
   if (!list.length) list = await fetch('photos.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => []);
   const dayOf = date => { const [d, m, y] = date.split('/'); return Math.round((new Date(y, m - 1, d) - new Date(2026, 5, 3)) / 864e5) + 1; };
-  document.getElementById('ph-track').innerHTML = list.map(p => `
+  // The first few load straight away (even before the page is shown); the rest as they come near while swiping
+  document.getElementById('ph-track').innerHTML = list.map((p, i) => `
     <figure class="ph-slide">
-      <img src="photos/${p.id}.jpg" alt="" loading="lazy">
+      <img src="photos/${p.id}.jpg" alt="" loading="${i < 4 ? 'eager' : 'lazy'}">
       <figcaption><span class="ph-meta">Day ${dayOf(p.date)} · ${formatDate(p.date)} · ${p.time}</span>${p.caption ? `<span class="ph-text">${p.caption}</span>` : ''}</figcaption>
     </figure>`).join('');
 }
@@ -1504,7 +1505,11 @@ function radialIntroPaint(now) {
 function radialIntroFrame(now) {
   if (!radialIntro || !staticCanvas) return;
   if (radialIntroPaint(now) < 1) requestAnimationFrame(radialIntroFrame);
-  else { radialIntro = null; animateRadialView(radialStartView(), RADIAL_ZOOM_MS); }
+  else {
+    radialIntro = null;
+    animateRadialView(radialStartView(), RADIAL_ZOOM_MS);
+    if (isPhone()) setTimeout(photosPageInit, RADIAL_ZOOM_MS + 200);   // get the Photos page ready in the background
+  }
 }
 
 // ─────────────────────────────────────────────
