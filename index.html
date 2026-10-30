@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>A field diary for "Iceland: A Loud Solitude" (2026)</title>
+<title>Iceland: A Loud Solitude (2026)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -172,17 +172,6 @@ body::before {
 #diary-status { font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding: 5px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 
 /* ── TRACKER VIEW ── */
-#tracker-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 24px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0; flex-wrap: wrap; gap: 8px;
-}
-#live-status { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0; animation: blink 2s infinite; }
-.live-dot.ok { background: var(--green); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-#btn-refresh { background: none; border: 1px solid var(--border); color: var(--muted); font-family: var(--font-mono); font-size: 11px; padding: 3px 9px; border-radius: 3px; cursor: pointer; }
-#btn-refresh:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 #stats-bar { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .stat-cell { flex: 1; min-width: 80px; padding: 8px 16px; border-right: 1px solid var(--border); text-align: center; }
 .stat-cell:last-child { border-right: none; }
@@ -268,6 +257,8 @@ body::before {
 #detail-title { font-size: 28px; font-weight: 300; font-style: italic; }
 #detail-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
 #detail-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); }
+.leaflet-bar a, .leaflet-bar a:hover { background: #d9d6cf; color: #4a4038; border-bottom-color: #b9b4aa; }
+.leaflet-bar a:hover { background: #ccc8c0; }
 .play-btn { background: #8e3a2d; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; color: #fff; cursor: pointer; }
 .play-btn:hover { background: #a24a3b; }
 .play-km { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; pointer-events: none;
@@ -312,7 +303,6 @@ body::before {
   #tabs { width: 100%; }
   .tab-btn { flex: 1; padding: 8px 10px; margin-right: 4px; }
   .tab-btn:last-child { margin-right: 0; }
-  #tracker-topbar { padding: 6px 16px; }
   .stat-cell { padding: 6px 10px; }
   .stat-num { font-size: 20px; }
   #tracker-layout { grid-template-rows: 33vh 1fr; }
@@ -343,7 +333,7 @@ body::before {
 <div id="site-header">
   <div id="title-block">
     <span class="author-name">Of Walking on Foot - Dario J Laganà (2026)</span>
-    <h1>A field diary for "Iceland: A Loud Solitude"</h1>
+    <h1>Iceland: A Loud Solitude</h1>
   </div>
   <div id="tabs">
     <button class="tab-btn active" id="tab-diary" onclick="switchTab('diary')">
@@ -377,17 +367,8 @@ body::before {
 
 <!-- TRACKER VIEW -->
 <div id="view-tracker">
-  <div id="tracker-topbar">
-    <div id="live-status">
-      <div class="live-dot" id="live-dot"></div>
-      <span id="live-label">Connecting…</span>
-      <span id="last-update"></span>
-    </div>
-    <button id="btn-refresh" onclick="loadData()">↻ Refresh</button>
-  </div>
   <div id="stats-bar">
     <div class="stat-cell"><span class="stat-num" id="stat-days">—</span><span class="stat-label">Days on foot</span></div>
-    <div class="stat-cell"><span class="stat-num" id="stat-last-loc" style="font-size:12px;cursor:pointer"></span><span class="stat-label">Last location</span></div>
   </div>
   <div id="tracker-layout">
     <div id="map-col"><div id="map"></div></div>
@@ -1908,8 +1889,6 @@ function loadDemoIntoTracker() {
 
   if (!allEntries.length) return;
   render();
-  setLiveStatus('ok');
-  document.getElementById('last-update').textContent = `DEMO · ${days.length} days`;
   hideLoading();
 }
 
@@ -2340,7 +2319,6 @@ function stopPlay() {
 // ── LOAD DATA ──────────────────────────────────────────
 async function loadData() {
   if (!SHEET_CSV_URL) return;
-  setLiveStatus('loading');
   document.getElementById('loading-msg').textContent = 'Fetching latest entries…';
 
   // Always clear stale data before fetching
@@ -2380,24 +2358,17 @@ async function loadData() {
       if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
       document.getElementById('log-list').innerHTML = '<div style="padding:24px 18px;font-family:var(--font-mono);font-size:11px;color:var(--muted)">No entries in sheet yet.</div>';
       document.getElementById('stat-days').textContent = '0';
-      document.getElementById('stat-last-loc').textContent = '—';
-      setLiveStatus('ok');
-      document.getElementById('last-update').textContent = 'Sheet connected — no entries yet';
       hideLoading();
       return;
     }
 
     render();
-    setLiveStatus('ok');
-    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
 
   } catch(e) {
-    setLiveStatus('error');
     let msg = e.message;
     if (e.name === 'AbortError') msg = 'Request timed out';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) msg = 'Network error — check sheet is published publicly';
-    document.getElementById('live-label').textContent = '⚠ ' + msg;
-    document.getElementById('loading-msg').textContent = '⚠ ' + msg + '. Click ↻ Refresh to try again.';
+    document.getElementById('loading-msg').textContent = '⚠ ' + msg + '. Reload the page to try again.';
   }
 
   hideLoading();
@@ -2454,17 +2425,8 @@ function render() {
   // Assign colors per day
   days.forEach((d, i) => { dayColors[d] = dayColorAt(days.length > 1 ? i / (days.length - 1) : 0); });
 
-  // Stats — days and last location only
+  // Stats — days only
   document.getElementById('stat-days').textContent = days.length;
-  const last = allEntries[allEntries.length - 1];
-  const locEl = document.getElementById('stat-last-loc');
-  if (last.Latitude && last.Longitude) {
-    const lat = toFloat(last.Latitude).toFixed(5);
-    const lon = toFloat(last.Longitude).toFixed(5);
-    locEl.innerHTML = `<a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:13px">📍 View on map</a>`;
-  } else {
-    locEl.textContent = '—';
-  }
 
   // Render map and log, passing dayNumMap so markers show correct numbers
   renderMap(byDay, days, dayNumMap);
@@ -3071,14 +3033,6 @@ function formatDate(dateStr) {
     }
     return new Date(dateStr).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
   } catch(e) { return dateStr; }
-}
-
-function setLiveStatus(s) {
-  const dot = document.getElementById('live-dot');
-  const lbl = document.getElementById('live-label');
-  if (s === 'ok') { dot.className = 'live-dot ok'; lbl.textContent = 'Live'; }
-  else if (s === 'loading') { dot.className = 'live-dot'; lbl.textContent = 'Loading…'; }
-  else { dot.className = 'live-dot'; lbl.textContent = 'Error'; }
 }
 
 function hideLoading(msg) {
