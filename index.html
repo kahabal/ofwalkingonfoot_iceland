@@ -1306,7 +1306,7 @@ function draw(days) {
 // PULSE ANIMATION for latest GPS
 // ─────────────────────────────────────────────
 function animateLatest() {
-  if(!latestGPSPos || !staticCanvas) { requestAnimationFrame(animateLatest); return; }
+  if(!latestGPSPos || !staticCanvas || radialIntro) { requestAnimationFrame(animateLatest); return; }
   const {x,y} = latestGPSPos;
   const canvas = document.getElementById('dial');
   const ctx = canvas.getContext('2d');
@@ -1361,6 +1361,39 @@ function captureStatic() {
   const src = document.getElementById('dial');
   staticCanvas.width=src.width; staticCanvas.height=src.height;
   staticCanvas.getContext('2d').drawImage(src,0,0);
+  if (radialIntro) radialIntroPaint(performance.now());   // keep hiding what the sweep hasn't reached
+}
+
+// ─────────────────────────────────────────────
+// INTRO: on the first load the radial is revealed day by day, a slice sweeping
+// from Day 1 round to the last day (the drawn image shown through a growing pie slice)
+// ─────────────────────────────────────────────
+const RADIAL_INTRO_DELAY = 700, RADIAL_INTRO_MS = 3000;   // after the loading screen fades
+let radialIntro = null;
+function radialIntroPaint(now) {
+  const canvas = document.getElementById('dial'), ctx = canvas.getContext('2d');
+  const t = Math.max(0, Math.min(1, (now - radialIntro.start) / RADIAL_INTRO_MS));
+  const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;   // ease in-out
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#f2ede3';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (e > 0) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, canvas.width, START_ANGLE, START_ANGLE - e * Math.PI * 2, true);   // the days run counterclockwise
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(staticCanvas, 0, 0);
+  }
+  ctx.restore();
+  return t;
+}
+function radialIntroFrame(now) {
+  if (!radialIntro || !staticCanvas) return;
+  if (radialIntroPaint(now) < 1) requestAnimationFrame(radialIntroFrame);
+  else radialIntro = null;
 }
 
 // ─────────────────────────────────────────────
@@ -1788,7 +1821,9 @@ async function diaryInit() {
   }
 
   draw(days);
+  radialIntro = { start: performance.now() + RADIAL_INTRO_DELAY };   // first load only: diaryInit runs once
   captureStatic();
+  requestAnimationFrame(radialIntroFrame);
   setupCanvasEvents(document.getElementById('dial'), days);
   resetZoom();
   // Canvas doesn't wait for web fonts: once the emoji glyphs arrive, draw again
