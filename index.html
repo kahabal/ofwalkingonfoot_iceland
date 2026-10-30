@@ -210,13 +210,19 @@ body::before {
 .latest-marker { width: 12px; height: 12px; border-radius: 50%; background: var(--red); border: 2px solid white; box-shadow: 0 0 0 3px rgba(142,58,45,.3); animation: ping 2s infinite; }
 @keyframes ping { 0%,100%{box-shadow:0 0 0 3px rgba(142,58,45,.3)} 50%{box-shadow:0 0 0 8px rgba(142,58,45,.08)} }
 #log-col { overflow-y: scroll; height: 100%; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-/* Phone only (see PHONE below): the sheet's header and the map's Diary button */
-#log-sheet-head { display: none; position: sticky; top: 0; z-index: 2; align-items: center; justify-content: space-between;
-                  padding: 10px 16px; background: var(--paper); border-bottom: 1px solid var(--border);
-                  font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
-#log-sheet-head button { background: none; border: none; font-size: 18px; color: var(--muted); cursor: pointer; padding: 0 4px; }
-.log-btn { display: none; background: var(--paper); border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px;
-           font-family: var(--font-mono); font-size: 12px; color: #8e3a2d; cursor: pointer; }
+/* Phone only (see PHONE below): the bottom tab bar, the Photos page, the Diary page's "Show on map" */
+#mnav { display: none; }
+#view-photos { display: none; flex: 1; min-height: 0; }
+#view-photos.active { display: flex; }
+#ph-track { flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+#ph-track::-webkit-scrollbar { display: none; }
+.ph-slide { flex: 0 0 100%; scroll-snap-align: start; display: flex; flex-direction: column; min-height: 0; padding: 12px 16px; }
+.ph-slide img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+.ph-slide figcaption { padding-top: 10px; text-align: center; }
+.ph-meta { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ph-text { display: block; margin-top: 6px; font-family: var(--font-read); font-size: 16px; line-height: 1.4; }
+.day-maplink { display: none; margin: 10px 16px 0; background: none; border: 1px solid #8e3a2d; border-radius: 4px; padding: 5px 10px;
+               font-family: var(--font-mono); font-size: 11px; color: #8e3a2d; cursor: pointer; }
 #log-col::-webkit-scrollbar { width: 6px; }
 #log-col::-webkit-scrollbar-track { background: transparent; }
 #log-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -328,24 +334,30 @@ body::before {
   #site-header { padding: 8px 16px 0; gap: 6px; }
   #title-block { padding-bottom: 4px; }
   #title-block h1 { font-size: 22px; }
-  #tabs { width: 100%; }
-  .tab-btn { flex: 1; padding: 8px 10px; margin-right: 4px; }
-  .tab-btn:last-child { margin-right: 0; }
+  /* The pages are in the bottom tab bar instead of the top tabs */
+  #tabs { display: none; }
+  #site-header { padding-bottom: 8px; }
+  #mnav { display: flex; flex-shrink: 0; border-top: 1px solid var(--border); background: var(--paper2);
+          padding-bottom: env(safe-area-inset-bottom); }
+  #mnav button { flex: 1; background: none; border: none; padding: 7px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+                 font-family: var(--font-mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); cursor: pointer; }
+  #mnav .mn-i { font-size: 18px; line-height: 1; filter: grayscale(1); opacity: .6; }
+  #mnav button.active { color: #8e3a2d; }
+  #mnav button.active .mn-i { filter: none; opacity: 1; }
+  /* Map page: the map only; Diary page: the day list only */
+  #view-tracker.m-diary #stats-bar, #view-tracker.m-diary #map-col, #view-tracker.m-map #log-col { display: none; }
+  .day-maplink { display: inline-block; }
+  #map .leaflet-control-layers { display: none; }
+  /* Radial tooltips and notes sit at the bottom centre of the screen, above the tab bar */
+  #dnp { position: fixed; left: 50% !important; top: auto !important; bottom: 76px; transform: translateX(-50%); max-width: 90vw; width: max-content; }
   .stat-cell { padding: 6px 10px; }
   .stat-num { font-size: 20px; }
   /* "84 active walking days / 3200 km on foot" on one line */
   .stat-line { font-size: 10px; letter-spacing: .03em; white-space: nowrap; }
   .stat-line .stat-num { font-size: 16px; margin-right: 2px; }
   .stat-sep { margin: 0 5px; }
-  /* The map fills the screen; the day list is a sheet that slides up over it (Diary button) */
   #tracker-layout { display: block; position: relative; }
   #map-col { height: 100%; border-right: none; }
-  #log-col { position: absolute; left: 0; right: 0; bottom: 0; height: 78%; z-index: 1200; background: var(--paper);
-             border-top: 1px solid var(--border); border-radius: 10px 10px 0 0; box-shadow: 0 -4px 14px rgba(0,0,0,.15);
-             transform: translateY(102%); transition: transform .3s ease; }
-  #tracker-layout.log-open #log-col { transform: none; }
-  #log-sheet-head { display: flex; }
-  .log-btn { display: block; }
   /* Keep the map credits to the right half so they don't cover the Play button */
   #map .leaflet-control-attribution { max-width: 55%; font-size: 9px; line-height: 1.3; }
   .day-heading { padding: 12px 16px 10px; flex-wrap: wrap; }
@@ -414,11 +426,15 @@ body::before {
   <div id="tracker-layout">
     <div id="map-col"><div id="map"></div></div>
     <div id="log-col">
-      <div id="log-sheet-head"><span>Field diary</span><button onclick="toggleLogSheet(false)" aria-label="Close">✕</button></div>
       <div id="log-list"></div>
       <div id="foot">Of Walking on Foot · Iceland · Updates daily at midnight</div>
     </div>
   </div>
+</div>
+
+<!-- PHOTOS VIEW (phone): every photo in time order, swiped sideways -->
+<div id="view-photos">
+  <div id="ph-track"></div>
 </div>
 
 <!-- BIOMETRICS VIEW -->
@@ -443,6 +459,15 @@ body::before {
     </section>
   </div>
 </div>
+
+<!-- PHONE: the pages as a tab bar at the bottom (hidden on wider screens, which keep the top tabs) -->
+<nav id="mnav">
+  <button data-page="radial" class="active" onclick="phonePage('radial')"><span class="mn-i">◉</span>Radial</button>
+  <button data-page="map" onclick="phonePage('map')"><span class="mn-i">🗺</span>Map</button>
+  <button data-page="diary" onclick="phonePage('diary')"><span class="mn-i">📖</span>Diary</button>
+  <button data-page="photos" onclick="phonePage('photos')"><span class="mn-i">📷</span>Photos</button>
+  <button data-page="bio" onclick="phonePage('bio')"><span class="mn-i">♥</span>Biometrics</button>
+</nav>
 
 <!-- PHOTO LIGHTBOX (map) -->
 <div id="lightbox" onclick="if(event.target.id==='lightbox'||event.target.classList.contains('lb-close'))closeLightbox()">
@@ -474,13 +499,23 @@ let diaryInited = false;
 
 let bioInited = false;
 
-function switchTab(tab) {
+// trackerMode: on phones the tracker view is two pages, 'map' (the map only) or 'diary' (the day list only)
+function switchTab(tab, trackerMode = 'map') {
   if (typeof stopPlay === 'function') stopPlay();   // leaving or re-entering a tab ends the map's Play
+  if (typeof hideTooltip === 'function') hideTooltip();   // a radial tooltip or note doesn't follow to another page
+  document.getElementById('dnp').classList.remove('show');
   diaryActive = tab === 'diary';
-  for (const t of ['diary', 'tracker', 'bio']) {
+  for (const t of ['diary', 'tracker', 'photos', 'bio']) {
     document.getElementById('view-' + t).classList.toggle('active', t === tab);
-    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    const btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
   }
+  const tv = document.getElementById('view-tracker');
+  tv.classList.toggle('m-map', trackerMode === 'map');
+  tv.classList.toggle('m-diary', trackerMode === 'diary');
+  const page = tab === 'diary' ? 'radial' : tab === 'tracker' ? trackerMode : tab;
+  document.querySelectorAll('#mnav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  if (tab === 'photos') photosPageInit();
 
   if (tab === 'diary' && !diaryInited) {
     diaryInited = true;
@@ -496,8 +531,34 @@ function switchTab(tab) {
   }
   // Invalidate map size when switching to tracker
   if (tab === 'tracker' && typeof map !== 'undefined' && map) {
-    setTimeout(() => map.invalidateSize(), 50);
+    setTimeout(() => {
+      map.invalidateSize();
+      if (!mapFitted && map.getContainer().offsetWidth) { map.fitBounds(ICELAND_BOUNDS); mapFitted = true; }
+    }, 50);
   }
+}
+
+// Phone pages (bottom tab bar) → the views: Map and Diary are the two halves of the tracker view
+function phonePage(page) {
+  if (page === 'radial') switchTab('diary');
+  else if (page === 'map' || page === 'diary') switchTab('tracker', page);
+  else switchTab(page);
+}
+const isPhone = () => window.matchMedia('(max-width: 700px)').matches;
+
+// Photos page (phone): every photo with its day, date and caption, one per screen, swiped sideways
+let photosPageInited = false;
+async function photosPageInit() {
+  if (photosPageInited) return;
+  photosPageInited = true;
+  let list = photosList;
+  if (!list.length) list = await fetch('photos.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => []);
+  const dayOf = date => { const [d, m, y] = date.split('/'); return Math.round((new Date(y, m - 1, d) - new Date(2026, 5, 3)) / 864e5) + 1; };
+  document.getElementById('ph-track').innerHTML = list.map(p => `
+    <figure class="ph-slide">
+      <img src="photos/${p.id}.jpg" alt="" loading="lazy">
+      <figcaption><span class="ph-meta">Day ${dayOf(p.date)} · ${formatDate(p.date)} · ${p.time}</span>${p.caption ? `<span class="ph-text">${p.caption}</span>` : ''}</figcaption>
+    </figure>`).join('');
 }
 
 // Open tracker tab and center map on a lat/lon, optionally showing a note popup
@@ -1456,10 +1517,18 @@ function createTooltip() {
   document.body.appendChild(tooltipEl);
 }
 
+// Phones: tooltips and notes sit at the bottom centre of the screen, just above the tab bar
+function phoneTipBottom() { return window.innerHeight - document.getElementById('mnav').getBoundingClientRect().top + 12; }
+
 function showTooltip(text, clientX, clientY) {
   if(!tooltipEl) return;
   tooltipEl.textContent = text;
   tooltipEl.style.display = 'block';
+  if (isPhone()) {
+    Object.assign(tooltipEl.style, { left: '50%', top: 'auto', bottom: phoneTipBottom() + 'px', transform: 'translateX(-50%)',
+                                     whiteSpace: 'normal', maxWidth: '90vw', textAlign: 'center' });
+    return;
+  }
   let left = clientX + 12;
   let top  = clientY - 28;
   if(left + 300 > window.innerWidth - 4) left = clientX - 304;
@@ -1626,6 +1695,7 @@ function setupCanvasEvents(canvas, days) {
       if(top < 4) top = 4;
       popup.style.left = left + 'px';
       popup.style.top  = top  + 'px';
+      if (isPhone()) popup.style.bottom = phoneTipBottom() + 'px';   // the phone CSS centres it at the bottom
       hideTooltip();
       return;
     }
@@ -2022,26 +2092,7 @@ function scheduleMidnightRefresh() {
   }, msUntilMidnight);
 }
 const ICELAND_BOUNDS = [[63.3, -24.6], [66.6, -13.4]];
-
-// Phones: the day list is a sheet over the full-screen map, opened by a Diary button on the map
-// (the button and the sheet styling only exist in the phone CSS; on wider screens the list sits beside the map)
-function toggleLogSheet(open) {
-  const layout = document.getElementById('tracker-layout');
-  layout.classList.toggle('log-open', open === undefined ? !layout.classList.contains('log-open') : open);
-}
-function addLogButton() {
-  const Ctl = L.Control.extend({
-    onAdd() {
-      const btn = L.DomUtil.create('button', 'log-btn');
-      btn.textContent = '☰ Diary';
-      L.DomEvent.disableClickPropagation(btn);
-      L.DomEvent.on(btn, 'click', () => toggleLogSheet(true));
-      return btn;
-    }
-  });
-  new Ctl({ position: 'topleft' }).addTo(map);
-  map.on('click', () => toggleLogSheet(false));   // a tap on the map closes the sheet
-}
+let mapFitted = false;
 function initMap() {
   // Gentler mouse wheel: a quarter-level per step instead of a full level (the +/− buttons still step by 1)
   map = L.map('map', { zoomControl: true, attributionControl: true, zoomSnap: 0.25, zoomDelta: 1, wheelPxPerZoomLevel: 150 });
@@ -2051,14 +2102,20 @@ function initMap() {
     maxNativeZoom: 16, maxZoom: 19
   }).addTo(map);
   map.fitBounds(ICELAND_BOUNDS);   // the whole island, whatever the screen size
+  mapFitted = map.getContainer().offsetWidth > 0;   // not when it starts hidden (phone Diary page): see switchTab
   addGpsTracksLayer();
   addPhotosLayer();
-  addLogButton();
   // Story (the encounters, off at first) and Notes (the blue day markers, on) in the same checkbox box
   storyLayer = L.layerGroup();
   layersControl.addOverlay(storyLayer, 'Story');
   notesLayer = L.layerGroup().addTo(map);
   layersControl.addOverlay(notesLayer, 'Notes');
+  // Phone map page: just the story and Play — no day markers, no photos, no checkbox box (hidden in the CSS)
+  if (isPhone()) {
+    map.removeLayer(notesLayer);
+    map.removeLayer(photosLayer);
+    storyLayer.addTo(map);
+  }
 }
 
 // Photos on the map: photos.json lists them, photos/ holds the web copies, photos/thumbs/ the round markers.
@@ -2826,7 +2883,7 @@ function dayBioHTML(day) {
 // Fly the map to a day's entries (all of them in view, not closer than a day's walk needs)
 function flyToDay(entries) {
   const pts = entries.filter(hasCoords).map(e => [toFloat(e.Latitude), toFloat(e.Longitude)]);
-  if (!pts.length || !map) return;
+  if (!pts.length || !map || !map.getContainer().offsetWidth) return;   // the map is hidden on the phone's Diary page
   map.flyToBounds(L.latLngBounds(pts).pad(0.3), { maxZoom: 11, duration: 0.8 });
 }
 
@@ -2868,6 +2925,13 @@ function renderLog(byDay, days, dayNumMap) {
       if (!entriesDiv.classList.contains('collapsed')) flyToDay(entries);   // opening a day shows it on the map
     };
     group.appendChild(heading);
+
+    // Phone Diary page: jump to this day on the Map page
+    const mapLink = document.createElement('button');
+    mapLink.className = 'day-maplink';
+    mapLink.textContent = '🗺 Show on map';
+    mapLink.onclick = () => { switchTab('tracker', 'map'); setTimeout(() => flyToDay(entries), 120); };
+    entriesDiv.appendChild(mapLink);
 
     // Daily biometrics box, shown at the top of the open day
     entriesDiv.insertAdjacentHTML('beforeend', dayBioHTML(day));
