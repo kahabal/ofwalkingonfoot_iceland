@@ -2827,6 +2827,13 @@ function dayBioHTML(day) {
     `<div class="day-bio-cell"><span class="day-bio-label">${label}</span><span class="day-bio-val">${v}${unit ? ' <small>' + unit + '</small>' : ''}</span></div>`).join('')}</div>`;
 }
 
+// Fly the map to a day's entries (all of them in view, not closer than a day's walk needs)
+function flyToDay(entries) {
+  const pts = entries.filter(hasCoords).map(e => [toFloat(e.Latitude), toFloat(e.Longitude)]);
+  if (!pts.length || !map) return;
+  map.flyToBounds(L.latLngBounds(pts).pad(0.3), { maxZoom: 11, duration: 0.8 });
+}
+
 // ── LOG RENDER ─────────────────────────────────────────
 function renderLog(byDay, days, dayNumMap) {
   const list = document.getElementById('log-list');
@@ -2860,7 +2867,10 @@ function renderLog(byDay, days, dayNumMap) {
     const entriesDiv = document.createElement('div');
     entriesDiv.className = 'day-entries' + (di === 0 ? '' : ' collapsed');
 
-    heading.onclick = () => entriesDiv.classList.toggle('collapsed');
+    heading.onclick = () => {
+      entriesDiv.classList.toggle('collapsed');
+      if (!entriesDiv.classList.contains('collapsed')) flyToDay(entries);   // opening a day shows it on the map
+    };
     group.appendChild(heading);
 
     // Daily biometrics box, shown at the top of the open day
