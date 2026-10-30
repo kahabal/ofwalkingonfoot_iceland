@@ -268,8 +268,8 @@ body::before {
 #detail-title { font-size: 28px; font-weight: 300; font-style: italic; }
 #detail-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
 #detail-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); }
-.play-btn { background: var(--paper); border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; color: #d0261b; cursor: pointer; }
-.play-btn:hover { background: var(--paper2); }
+.play-btn { background: #8e3a2d; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; color: #fff; cursor: pointer; }
+.play-btn:hover { background: #a24a3b; }
 .play-km { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000; pointer-events: none;
            background: #8e3a2d; color: #fff; font-family: var(--font-mono); font-size: 20px; padding: 6px 16px; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,.15); }
 #detail-nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
@@ -2243,19 +2243,15 @@ function startPlay() {
     rides.push({ layers: icon ? [m, icon] : [m], date: dateKey(m.options.rideDate),
                  ends: [m.getLatLngs()[0], m.getLatLngs()[m.getLatLngs().length - 1]] });
   });
-  rides.forEach(r => r.layers.forEach(l => map.removeLayer(l)));
-  play = { segs, total, walked, si: 0, start: performance.now(), view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
-           drawn: L.layerGroup().addTo(map), line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
-  if (photosOn) map.removeLayer(photosLayer);
-  map.removeLayer(gpsTracksLayer);
-  dayMarkers.forEach(m => map.removeLayer(m));
-  play.line = L.polyline([], PLAY_LINE).addTo(play.drawn);
-  if (!map.getPane('playDot')) map.createPane('playDot').style.zIndex = 660;   // above everything else on the map
-  play.dot = L.circleMarker(segs[0].pts[0], { pane: 'playDot', radius: 15, weight: 3, color: '#fff', fillColor: '#8e3a2d', fillOpacity: 1, interactive: false }).addTo(map);
+  play = { segs, total, walked, si: 0, phase: 'fade', t0: performance.now(), start: 0,
+           view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, dayMarkers, rides,
+           drawn: null, line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
   play.km = L.DomUtil.create('div', 'play-km', map.getContainer());
   play.km.textContent = '0 km';
+  // Intro: everything on the map fades out together, then the dot grows at the start, then it walks
+  PLAY_FADE_PANES.forEach(n => { const s = map.getPane(n).style; s.transition = `opacity ${PLAY_FADE_MS}ms ease`; s.opacity = 0; });
 
   // Anything the viewer does ends it (the button's own click is handled by the button)
   play.stopper = ev => { if (!ev.target.closest || !ev.target.closest('.play-btn')) stopPlay(); };
@@ -2263,9 +2259,36 @@ function startPlay() {
   play.raf = requestAnimationFrame(playFrame);
 }
 
+// The panes holding day markers, rides, photos and the GPS track (faded as one at the start)
+const PLAY_FADE_PANES = ['markerPane', 'overlayPane', 'photos', 'gpsTracks'];
+const PLAY_FADE_MS = 2000, PLAY_GROW_MS = 700;
+function playFadePanes(opacity) {
+  PLAY_FADE_PANES.forEach(n => { const s = map.getPane(n).style; s.transition = 'none'; s.opacity = opacity; });
+}
+
 function playFrame(now) {
   const p = play;
   if (!p) return;
+  if (p.phase === 'fade') {
+    if (now - p.t0 < PLAY_FADE_MS) { p.raf = requestAnimationFrame(playFrame); return; }
+    // Faded: take the layers off the map for real, then show the panes again for what Play draws
+    if (p.photosOn) map.removeLayer(photosLayer);
+    map.removeLayer(gpsTracksLayer);
+    p.dayMarkers.forEach(m => map.removeLayer(m));
+    p.rides.forEach(r => r.layers.forEach(l => map.removeLayer(l)));
+    playFadePanes('');
+    p.drawn = L.layerGroup().addTo(map);
+    p.line = L.polyline([], PLAY_LINE).addTo(p.drawn);
+    if (!map.getPane('playDot')) map.createPane('playDot').style.zIndex = 660;   // above everything else on the map
+    p.dot = L.circleMarker(p.segs[0].pts[0], { pane: 'playDot', radius: 0, weight: 3, color: '#fff', fillColor: '#8e3a2d', fillOpacity: 1, interactive: false }).addTo(map);
+    p.phase = 'grow'; p.t0 = now;
+  }
+  if (p.phase === 'grow') {
+    const g = Math.min(1, (now - p.t0) / PLAY_GROW_MS);
+    p.dot.setRadius(15 * (1 - Math.pow(1 - g, 3)));   // ease-out
+    if (g < 1) { p.raf = requestAnimationFrame(playFrame); return; }
+    p.phase = 'run'; p.start = now;
+  }
   const d = Math.min(1, (now - p.start) / PLAY_MS) * p.total;
   // Finished segments stay drawn; a new line (solid for a track, dashed for a gap) starts for the next one
   while (p.si < p.segs.length - 1 && d >= p.segs[p.si + 1].from) {
@@ -2302,8 +2325,9 @@ function stopPlay() {
   play = null;
   cancelAnimationFrame(p.raf);
   ['pointerdown', 'wheel', 'keydown'].forEach(t => document.removeEventListener(t, p.stopper, true));
-  map.removeLayer(p.drawn);
-  map.removeLayer(p.dot);
+  playFadePanes('');   // in case it was stopped during the fade
+  if (p.drawn) map.removeLayer(p.drawn);
+  if (p.dot) map.removeLayer(p.dot);
   p.km.remove();
   gpsTracksLayer.addTo(map);
   if (p.photosOn) photosLayer.addTo(map);
