@@ -278,6 +278,7 @@ body::before {
 .leaflet-tooltip.story-tip::before { display: none; }
 .play-btn { background: #8e3a2d; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; color: #fff; cursor: pointer; }
 .play-btn:hover { background: #a24a3b; }
+#map.playing .leaflet-control-layers { display: none; }   /* no layer choice while Play runs */
 /* Encounter during Play: the icon pops up out of the map, then its label fades in; both stay */
 .enc-pop { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
 .enc-icon { font-family: 'Noto Color Emoji', sans-serif; font-size: 34px; line-height: 1; transform-origin: 50% 100%;
@@ -2463,6 +2464,7 @@ function startPlay() {
            drawn: null, line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
   map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
+  map.getContainer().classList.add('playing');   // hides the layer checkboxes until Play ends
   play.km = L.DomUtil.create('div', 'play-km', map.getContainer());
   play.km.textContent = '0 km';
   // Photo thumbnail, bottom right: two stacked images that crossfade
@@ -2577,6 +2579,7 @@ function stopPlay() {
   p.rides.forEach(r => r.layers.forEach(l => l.addTo(map)));
   map.setView(p.view.center, p.view.zoom, { animate: false });
   document.querySelector('.play-btn').innerHTML = '▶ Play';
+  map.getContainer().classList.remove('playing');
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
