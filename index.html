@@ -307,13 +307,11 @@ body::before {
 .scale-icon { font-size: 12px; opacity: 0.15; }
 .scale-icon.on { opacity: 1; }
 #foot { text-align: center; padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--border); border-top: 1px solid var(--border); }
-#loading-screen { position: fixed; inset: 0; background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 900; transition: opacity .5s; }
+#loading-screen { position: fixed; inset: 0; background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 900; transition: opacity .9s ease; }
 #loading-screen.gone { opacity: 0; pointer-events: none; }
-.loading-title { font-size: 24px; font-weight: 300; font-style: italic; }
+/* The title while the page loads: the top bar's font, big, dissolving as the radial starts composing */
+.loading-title { font-size: clamp(34px, 7vw, 88px); font-weight: 300; font-style: italic; text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: 0 16px; }
 .loading-sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
-.loading-bar { width: 140px; height: 1px; background: var(--border); overflow: hidden; }
-.loading-fill { width: 60%; height: 100%; background: var(--ink); animation: lslide 1.4s ease-in-out infinite; }
-@keyframes lslide { 0%{transform:translateX(-100%)} 100%{transform:translateX(260%)} }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -348,10 +346,8 @@ body::before {
 <body>
 
 <div id="loading-screen">
-  <div class="loading-title">Of Walking on Foot</div>
-  <div class="loading-sub">Iceland · 2025</div>
-  <div class="loading-bar"><div class="loading-fill"></div></div>
-  <div class="loading-sub" id="loading-msg">Composing the field diary…</div>
+  <div class="loading-title">A Loud Solitude</div>
+  <div class="loading-sub" id="loading-msg"></div>
 </div>
 
 <!-- SHARED HEADER -->
@@ -1392,7 +1388,7 @@ function captureStatic() {
 // sweeping from Day 1 round to the last day (the drawn image through a growing pie slice);
 // then the view glides in, twice as close, on Reykjavík
 // ─────────────────────────────────────────────
-const RADIAL_INTRO_DELAY = 700, RADIAL_INTRO_MS = 3000;   // after the loading screen fades
+const RADIAL_INTRO_DELAY = 300, RADIAL_INTRO_MS = 3000;   // starts while the title screen dissolves
 const RADIAL_ZOOM_MS = 1500;   // then the glide in to Reykjavík
 let radialIntro = null;
 function radialIntroPaint(now) {
@@ -1878,7 +1874,7 @@ async function diaryInit() {
     .then(() => { draw(days); captureStatic(); })
     .catch(() => {});
   requestAnimationFrame(animateLatest);
-  setTimeout(()=>document.getElementById('loading-screen').classList.add('gone'),650);
+  document.getElementById('loading-screen').classList.add('gone');   // dissolves while the sweep begins
 
   window.addEventListener('resize',()=>{ if(diaryActive){ draw(days); captureStatic(); } });
 }
@@ -3257,14 +3253,9 @@ setTimeout(() => {
 
 // ── INIT ─────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  // Start with diary view
+  // Start with diary view; the title screen dissolves as the radial starts composing (diaryInit)
   diaryInited = true;
   diaryInit();
-
-  // Dismiss loading after diary draws
-  setTimeout(() => {
-    document.getElementById('loading-screen').classList.add('gone');
-  }, 1200);
 });
 
 // Safety net
