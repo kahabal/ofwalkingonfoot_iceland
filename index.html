@@ -2806,10 +2806,30 @@ function closeDetail(event) {
 }
 function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
 
-// Previous / next entry: arrow buttons, ← → keys, and a sideways swipe on phones
+// Previous / next entry: arrow buttons, ← → keys, and a sideways swipe on phones.
+// The window slides out on the side it leaves and the new entry slides in from the other.
+const DETAIL_SLIDE_MS = 180;
+let detailSliding = false;
+function detailBoxMove(x, ms) {
+  const box = document.getElementById('detail-box');
+  box.style.transition = ms ? `transform ${ms}ms ease, opacity ${ms}ms ease` : 'none';
+  box.style.transform = x ? `translateX(${x}px)` : '';
+  box.style.opacity = x ? Math.max(0, 1 - Math.abs(x) / box.offsetWidth) : '';
+}
 function stepDetail(dir) {
   const next = detailOrder[detailIdx + dir];
-  if (next) openDetail(next);
+  if (!next || detailSliding) return;
+  detailSliding = true;
+  const w = document.getElementById('detail-box').offsetWidth;
+  detailBoxMove(-dir * w, DETAIL_SLIDE_MS);
+  setTimeout(() => {
+    openDetail(next);
+    detailBoxMove(dir * w * 0.6, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      detailBoxMove(0, DETAIL_SLIDE_MS);
+      setTimeout(() => { detailSliding = false; }, DETAIL_SLIDE_MS);
+    }));
+  }, DETAIL_SLIDE_MS);
 }
 document.addEventListener('keydown', ev => {
   if (!document.getElementById('detail-modal').classList.contains('open')) return;
@@ -2817,14 +2837,32 @@ document.addEventListener('keydown', ev => {
   else if (ev.key === 'ArrowRight') stepDetail(1);
 });
 (() => {
+  // The window follows the finger sideways; let go past 60 px to change entry, otherwise it springs back
   const box = document.getElementById('detail-box');
-  let x0 = null, y0 = null;
-  box.addEventListener('touchstart', ev => { x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; }, { passive: true });
-  box.addEventListener('touchend', ev => {
+  let x0 = null, y0 = null, dragging = false, dx = 0;
+  box.addEventListener('touchstart', ev => {
+    if (detailSliding) return;
+    x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY; dragging = false; dx = 0;
+  }, { passive: true });
+  box.addEventListener('touchmove', ev => {
     if (x0 == null) return;
-    const dx = ev.changedTouches[0].clientX - x0, dy = ev.changedTouches[0].clientY - y0;
+    const mx = ev.touches[0].clientX - x0, my = ev.touches[0].clientY - y0;
+    if (!dragging) {
+      if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { x0 = null; return; } // vertical: let it scroll
+      if (Math.abs(mx) < 10) return;
+      dragging = true;
+    }
+    dx = mx;
+    const hasNext = !!detailOrder[detailIdx + (dx < 0 ? 1 : -1)];
+    detailBoxMove(hasNext ? dx : dx * 0.25, 0); // stiff at the first and last entry
+  }, { passive: true });
+  box.addEventListener('touchend', () => {
+    if (x0 == null) return;
     x0 = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) stepDetail(dx < 0 ? 1 : -1); // swipe left = next
+    if (!dragging) return;
+    const dir = dx < 0 ? 1 : -1; // swipe left = next
+    if (Math.abs(dx) > 60 && detailOrder[detailIdx + dir]) stepDetail(dir);
+    else detailBoxMove(0, DETAIL_SLIDE_MS);
   }, { passive: true });
 })();
 
