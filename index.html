@@ -1909,7 +1909,7 @@ function setupCanvasEvents(canvas, days) {
   // Only the radial's own area: elsewhere (the Field Diary list) the wheel scrolls normally
   document.getElementById('diary-canvas-wrap').addEventListener('wheel', e => {
     e.preventDefault();
-    zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.9, canvas);
+    zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 0.9 : 1.12, canvas);   // wheel towards you zooms in
   }, { passive: false });
 
   canvas.addEventListener('dblclick', resetZoom);
