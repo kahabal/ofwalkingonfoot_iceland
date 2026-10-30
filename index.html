@@ -235,6 +235,12 @@ body::before {
 .day-date { font-family: var(--font-read); font-size: 14px; color: #6b5d4d; margin-top: 2px; }
 .day-meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
 .day-count { background: var(--accent); color: white; font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: 8px; }
+.day-bio { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 12px; padding: 10px 18px; background: #e3e9ee; border-bottom: 1px solid var(--border); }
+.day-bio-cell { display: flex; flex-direction: column; min-width: 0; }
+.day-bio-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+.day-bio-val { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.day-bio-val small { font-size: 10px; color: var(--muted); }
+@media (max-width: 600px) { .day-bio { grid-template-columns: repeat(2, 1fr); } }
 .day-entries { display: block; }
 .day-entries.collapsed { display: none; }
 .entry { padding: 12px 18px; border-bottom: 1px solid #ddd8cc; cursor: pointer; transition: background .15s; }
@@ -1803,6 +1809,7 @@ let allEntries = [];
 let map, routeLine, markers = [];
 let refreshTimer = null;
 let dayColors = {};
+let trackerBio = {}; // Biometrics tab rows by date (DD/MM/YYYY)
 let layersControl = null;   // the map's checkbox box (GPS tracks, Photos)
 
 // Stretches not done on foot, drawn dotted on the map with an icon at the midpoint.
@@ -2171,6 +2178,12 @@ async function loadData() {
 
     allEntries = parseCSV(csv);
 
+    // Daily biometrics for the day boxes; the log still renders without them
+    try {
+      const bio = parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
+      trackerBio = Object.fromEntries(bio.map(b => [b.Date, b]));
+    } catch (e) { trackerBio = {}; }
+
     if (!allEntries.length) {
       // Clear any old markers from previous load
       markers.forEach(m => map.removeLayer(m));
@@ -2428,6 +2441,29 @@ function renderLog(byDay, days, dayNumMap) {
 
     heading.onclick = () => entriesDiv.classList.toggle('collapsed');
     group.appendChild(heading);
+
+    // Daily biometrics box under the day title
+    const bio = trackerBio[day];
+    if (bio) {
+      const f = (col, digits) => { const v = d_num(bio[col]); return v == null ? null : v.toLocaleString('en-GB', { maximumFractionDigits: digits, minimumFractionDigits: digits }); };
+      const cells = [
+        ['📏 Distance',  f('Distance_km', 1),    'km'],
+        ['👣 Steps',     f('Steps', 0),          ''],
+        ['⛰️ Gain',      f('Gain_m', 0),         'm'],
+        ['🔥 Calories',  f('Calories_kcal', 0),  'kcal'],
+        ['❤️ Walking HR', f('Avg_Walking_HR', 0), 'BPM'],
+        ['💪 Cardio load', f('Cardio_Load', 2),  ''],
+        ['🌡️ Skin temp', f('Skin_Temp_C', 1),    '°C'],
+        ['😴 Sleep',     f('Sleep_Score', 0),    '/100'],
+      ].filter(c => c[1] != null);
+      if (cells.length) {
+        const box = document.createElement('div');
+        box.className = 'day-bio';
+        box.innerHTML = cells.map(([label, v, unit]) =>
+          `<div class="day-bio-cell"><span class="day-bio-label">${label}</span><span class="day-bio-val">${v}${unit ? ' <small>' + unit + '</small>' : ''}</span></div>`).join('');
+        group.appendChild(box);
+      }
+    }
 
     // Entries — morning to night within the day (days themselves stay newest first)
     [...entries].sort((a, b) => (a.Timestamp || '').localeCompare(b.Timestamp || '')).forEach(e => {
