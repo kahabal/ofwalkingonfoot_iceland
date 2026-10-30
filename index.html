@@ -1991,7 +1991,8 @@ function scheduleMidnightRefresh() {
 }
 const ICELAND_BOUNDS = [[63.3, -24.6], [66.6, -13.4]];
 function initMap() {
-  map = L.map('map', { zoomControl: true, attributionControl: true });
+  // Gentler mouse wheel: a quarter-level per step instead of a full level (the +/− buttons still step by 1)
+  map = L.map('map', { zoomControl: true, attributionControl: true, zoomSnap: 0.25, zoomDelta: 1, wheelPxPerZoomLevel: 150 });
   // Neutral grey base: no territorial-waters line in the sea
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors',
