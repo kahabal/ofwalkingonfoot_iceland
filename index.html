@@ -1114,7 +1114,8 @@ function draw(days) {
   const canvas = document.getElementById('dial');
   // Make canvas larger than viewport — circle can overflow
   const size = Math.max(window.innerWidth, window.innerHeight) * 1.1;
-  dialRes = Math.min((window.devicePixelRatio || 1) * 2, 4096 / size);
+  // Phones get a 2048px canvas (a quarter of the memory): sharp enough, and the radial plus its copy stay light
+  dialRes = Math.min((window.devicePixelRatio || 1) * 2, (isPhone() ? 2048 : 4096) / size);
   canvas.width = Math.round(size * dialRes); canvas.height = Math.round(size * dialRes);
   canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
   const ctx = canvas.getContext('2d');
@@ -1416,7 +1417,8 @@ function draw(days) {
 // PULSE ANIMATION for latest GPS
 // ─────────────────────────────────────────────
 function animateLatest() {
-  if(!latestGPSPos || !staticCanvas || radialIntro) { requestAnimationFrame(animateLatest); return; }
+  // Waits (draws nothing) during the intro and while another page is open
+  if(!latestGPSPos || !staticCanvas || radialIntro || !diaryActive) { requestAnimationFrame(animateLatest); return; }
   const {x,y} = latestGPSPos;
   const canvas = document.getElementById('dial');
   const ctx = canvas.getContext('2d');
@@ -1919,6 +1921,9 @@ function setupCanvasEvents(canvas, days) {
 // ─────────────────────────────────────────────
 let sharedDemoDays = null; // shared between diary and tracker
 
+// The Sheet's Diary and Biometrics tabs as first downloaded (by the radial), so other pages don't fetch them again
+const sheetCache = { diary: null, bio: null };
+
 // Loading bar on the title screen: it starts a little filled and grows as each part of the data arrives
 const LOADING_STEPS = 3;
 let loadingDone = 0;
@@ -1942,9 +1947,12 @@ async function diaryInit() {
       }).then(res => { if(!res.ok) throw new Error('HTTP '+res.status); return res.text(); }));
       const bioReq = loadingStep(fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).catch(() => null));
       const iconsReq = loadingStep(loadIconImages());
-      const entries = d_parseCSV(await diaryReq);
+      const diaryText = await diaryReq;
+      const entries = d_parseCSV(diaryText);
       days = groupByDay(entries);
       const bioText = await bioReq;
+      sheetCache.diary = diaryText;   // the map and Biometrics reuse these instead of downloading again
+      sheetCache.bio = bioText;
       if (bioText) {   // without it the radial still draws, just without the distance ring
         const byDate = Object.fromEntries(d_parseCSV(bioText).map(b => [b.Date, b]));
         days.forEach(d => { d.bio = byDate[d.date] || null; });
@@ -1971,7 +1979,7 @@ async function diaryInit() {
   document.fonts.load(`16px ${EMOJI_FONT}`, [...drawnIcons].join(''))
     .then(() => { draw(days); captureStatic(); })
     .catch(() => {});
-  requestAnimationFrame(animateLatest);
+  if (!isPhone()) requestAnimationFrame(animateLatest);   // the pulsing last position: computer only
   document.getElementById('loading-screen').classList.add('gone');   // dissolves while the sweep begins
 
   window.addEventListener('resize',()=>{ if(diaryActive){ draw(days); captureStatic(); } });
@@ -2100,7 +2108,7 @@ function scheduleMidnightRefresh() {
   midnight.setHours(24, 0, 0, 0); // next midnight
   const msUntilMidnight = midnight - now;
   refreshTimer = setTimeout(() => {
-    loadData();
+    loadData(true);
     scheduleMidnightRefresh(); // reschedule for next midnight
   }, msUntilMidnight);
 }
@@ -2153,7 +2161,7 @@ function addPhotosLayer() {
   const spots = [];
   fetch('photos.json', { cache: 'no-cache' })
     .then(r => r.json())
-    .then(list => (photosList = list).forEach(p => {
+    .then(list => (photosList = list, isPhone() ? [] : list).forEach(p => {   // phones: the list only, no map markers
       let spot = spots.find(s => map.distance([s.lat, s.lon], [p.lat, p.lon]) < 40);
       if (!spot) {
         spot = { lat: p.lat, lon: p.lon, n: 0 };
@@ -2210,7 +2218,7 @@ let bioNormalized = true, bioChart = null, bioData = [], bioExt = {};
 
 async function bioInit() {
   try {
-    const rows = d_parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
+    const rows = d_parseCSV(sheetCache.bio || await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
     bioData = rows.map(r => {
       const d = { date: r.Date, distance_km: d_num(r.Distance_km) };
       for (const [k, m] of Object.entries(BIO_METRICS)) d[k] = d_num(r[m.col]);
@@ -2225,13 +2233,13 @@ async function bioInit() {
     bioExt[k] = { min: Math.min(...v), max: Math.max(...v) };
   }
   bioRenderCards();
+  if (isPhone()) { bioInitMulti(); return; }   // phones: the small charts only, not the combined chart and its controls
   bioRenderToggles();
   document.getElementById('bio-norm').onclick = () => bioSetMode(true);
   document.getElementById('bio-abs').onclick = () => bioSetMode(false);
   document.getElementById('bio-all').onclick = () => { Object.keys(BIO_METRICS).forEach(k => bioActive.add(k)); bioRenderToggles(); bioUpdate(); };
   document.getElementById('bio-none').onclick = () => { bioActive.clear(); bioRenderToggles(); bioUpdate(); };
   bioInitChart();
-  if (isPhone()) bioInitMulti();
 }
 
 // Phone: one small chart per measure, stacked, each on its own real scale (the combined chart and
@@ -2678,7 +2686,8 @@ function stopPlay() {
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
-async function loadData() {
+// fresh: download again even if the radial already has the data (the midnight refresh)
+async function loadData(fresh = false) {
   if (!SHEET_CSV_URL) return;
   document.getElementById('loading-msg').textContent = 'Fetching latest entries…';
 
@@ -2686,21 +2695,24 @@ async function loadData() {
   allEntries = [];
 
   try {
-    // Force bypass of all caches — unique timestamp + cache:no-store
-    const url = SHEET_CSV_URL + '&t=' + Date.now() + '&r=' + Math.random();
+    let csv = fresh ? null : sheetCache.diary;
+    if (!csv) {
+      // Force bypass of all caches — unique timestamp + cache:no-store
+      const url = SHEET_CSV_URL + '&t=' + Date.now() + '&r=' + Math.random();
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const res = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-    });
-    clearTimeout(timeout);
+      const res = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
+      clearTimeout(timeout);
 
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      csv = await res.text();
+    }
 
     if (!csv || csv.trim().length < 10) throw new Error('Empty response from sheet');
 
@@ -2708,8 +2720,8 @@ async function loadData() {
 
     // Daily biometrics for the day boxes; the log still renders without them
     try {
-      const bio = parseCSV(await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text()));
-      trackerBio = Object.fromEntries(bio.map(b => [b.Date, b]));
+      const bioText = (!fresh && sheetCache.bio) || await fetch(BIO_URL + '&t=' + Date.now(), { cache: 'no-store' }).then(r => r.text());
+      trackerBio = Object.fromEntries(parseCSV(bioText).map(b => [b.Date, b]));
     } catch (e) { trackerBio = {}; }
     // Hand-picked encounters that pop up during Play
     try {
@@ -2871,8 +2883,8 @@ async function renderMap(byDay, days, dayNumMap) {
     });
   });
 
-  // Place markers on top of lines
-  days.forEach((day, dayIdx) => {
+  // Place markers on top of lines (the Notes layer; phones never show it, so they don't build it)
+  if (!isPhone()) days.forEach((day, dayIdx) => {
     const entries = byDay[day];
     const color = dayColors[day];
 
