@@ -2545,7 +2545,9 @@ function startPlay() {
   play = { segs, total, walked, si: 0, phase: 'fade', t0: performance.now(), start: 0,
            view: { center: map.getCenter(), zoom: map.getZoom() }, photosOn, notesOn, storyOn, rides, encounters, pics, pi: -1,
            drawn: null, line: null, dot: null, cam: segs[0].pts[0], raf: 0 };
-  map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
+  // Desktop: the map glides to the start while everything fades; phones jump there
+  if (isPhone()) map.setView(segs[0].pts[0], PLAY_ZOOM, { animate: false });
+  else map.flyTo(segs[0].pts[0], PLAY_ZOOM, { duration: PLAY_FADE_MS / 1000 });
   document.querySelector('.play-btn').innerHTML = '■ Stop';
   map.getContainer().classList.add('playing');   // hides the layer checkboxes until Play ends
   play.km = L.DomUtil.create('div', 'play-km', map.getContainer());
@@ -2656,11 +2658,21 @@ function stopPlay() {
   p.km.remove();
   p.pic.remove();
   gpsTracksLayer.addTo(map);
-  if (p.photosOn) photosLayer.addTo(map);
-  if (p.notesOn) notesLayer.addTo(map);
-  if (p.storyOn) storyLayer.addTo(map);
   p.rides.forEach(r => r.layers.forEach(l => l.addTo(map)));
-  map.setView(p.view.center, p.view.zoom, { animate: false });
+  if (isPhone()) {
+    // Phones: back to the layers and view from before
+    if (p.photosOn) photosLayer.addTo(map);
+    if (p.notesOn) notesLayer.addTo(map);
+    if (p.storyOn) storyLayer.addTo(map);
+    map.setView(p.view.center, p.view.zoom, { animate: false });
+  } else {
+    // Desktop: stay where Play ended, with the story on and the day markers and photos off (no flash back);
+    // the checkboxes follow, so the viewer can turn them on again
+    map.stop();   // a glide to the start still under way ends where it is
+    map.removeLayer(photosLayer);   // (they may still be on when stopped during the fade)
+    map.removeLayer(notesLayer);
+    storyLayer.addTo(map);
+  }
   document.querySelector('.play-btn').innerHTML = '▶ Play';
   map.getContainer().classList.remove('playing');
 }
